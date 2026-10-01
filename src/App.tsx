@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { CircleCheck, TriangleAlert, OctagonX, Wrench, CirclePause } from "lucide-react";
+import Cad from "./Cad";
 
 /* Página "storybook" de centralBV: colores y tipografía.
    Los hex se leen en vivo desde tokens.css (getComputedStyle), así que esta
@@ -181,7 +182,7 @@ const grid = "grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4";
 export default function DesignSystem() {
   return (
     <main className="min-h-screen bg-bg-base text-text-primary">
-      <div className="mx-auto flex max-w-6xl flex-col gap-14 px-(--layout-margin) py-10">
+      {/* <div className="mx-auto flex max-w-6xl flex-col gap-14 px-(--layout-margin) py-10">
         <header className="flex flex-col gap-3">
           <p className="text-eyebrow">centralBV</p>
           <h1 className="text-3xl font-semibold">Design system</h1>
@@ -367,7 +368,9 @@ export default function DesignSystem() {
             </div>
           </Group>
         </Section>
-      </div>
+      </div> */}
+
+      <Cad />
     </main>
   );
 }
