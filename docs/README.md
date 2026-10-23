@@ -30,24 +30,25 @@ npm run build    # build de producción
 
 ```
 src/
-├─ app/                 router, providers y layout por rol
+├─ app/                 router, guards de sesión y composición de rutas
 ├─ components/
-│  ├─ ui/               shadcn (generado por el CLI)
-│  └─ centralbv/        componentes propios: readout, check-item, compartimento, navegación
-├─ features/
-│  ├─ inspeccion/
-│  ├─ vehiculos/
-│  ├─ constancias/
-│  └─ usuarios/
-├─ lib/utils.ts
+│  ├─ ui/               shadcn (se crea al sumar el primer componente)
+│  └─ centralbv/        componentes propios reutilizables
+├─ features/            una carpeta por funcionalidad
+│  ├─ auth/             login y sesión
+│  ├─ dashboard/        pantalla inicial
+│  └─ …                 inspeccion, vehiculos, constancias, usuarios
+├─ lib/                 infraestructura compartida (HTTP)
 ├─ styles/
-│  ├─ index.css
+│  ├─ index.css         entrada de Tailwind y fuentes
 │  └─ tokens.css        única fuente de verdad de los tokens en código
 └─ types/dominio.ts     modelo de datos
 docs/                   esta documentación
 ```
 
 Se organiza por `features` y no por tipo de archivo, para que tocar la inspección no obligue a saltar entre cinco carpetas.
+
+Árbol completo, responsabilidades por carpeta, reglas de dependencia y guía para agregar features: [estructura.md](./estructura.md).
 
 ## Diseño (Figma)
 
