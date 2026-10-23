@@ -6,13 +6,19 @@ export interface RespuestaLogin {
   token: string;
 }
 
+// Lo que devuelve POST /auth/login en centralBV_back (AuthService.login).
+interface RespuestaLoginApi {
+  access_token: string;
+  user: { id: string; nombre: string; email: string; roles: string[] };
+}
+
 export async function iniciarSesion(credenciales: Credenciales): Promise<RespuestaLogin> {
-  const { data } = await http.post<RespuestaLogin>("/auth/login", {
+  const { data } = await http.post<RespuestaLoginApi>("/auth/login", {
     email: credenciales.email,
     password: credenciales.password,
   });
 
-  return data;
+  return { token: data.access_token };
 }
 
 export function esErrorDeCredenciales(error: unknown): boolean {

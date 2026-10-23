@@ -21,7 +21,9 @@ centralBV/
 │
 ├─ src/
 │  ├─ app/
-│  │  └─ router.tsx             Rutas, guards de sesión y árbol de TanStack Router
+│  │  ├─ router.tsx             Rutas, guards de sesión y árbol de TanStack Router
+│  │  ├─ AppLayout.tsx          Riel lateral de las pantallas con sesión
+│  │  └─ configurarHttp.ts      Interceptores: token en cada pedido y 401 → login
 │  │
 │  ├─ assets/                   Imágenes y recursos importados desde código
 │  │  ├─ hero.png
@@ -30,8 +32,12 @@ centralBV/
 │  │
 │  ├─ components/               Componentes reutilizables entre features
 │  │  └─ centralbv/             Componentes propios de la app
-│  │     ├─ Alert.tsx           Aviso con tono danger/info
-│  │     └─ BrandMark.tsx       Logo y nombre de CentralBV
+│  │     ├─ Alert.tsx           Aviso con tono danger/info/ok/neutral
+│  │     ├─ BrandMark.tsx       Logo y nombre de CentralBV
+│  │     ├─ Button.tsx          Button y ButtonLink (Link con aspecto de botón)
+│  │     ├─ EmptyState.tsx      Panel de vacío, sin resultados y error
+│  │     ├─ Field.tsx           Field, Input, Select y Textarea
+│  │     └─ estilos.ts          Clases compartidas (foco, variantes de botón)
 │  │
 │  ├─ features/                 Una carpeta por funcionalidad
 │  │  ├─ auth/                  Login y manejo de sesión
@@ -45,12 +51,24 @@ centralBV/
 │  │  │  │  └─ LoginRoutePage.tsx   Adaptador entre la ruta y LoginPage
 │  │  │  └─ session.ts          Lectura, guardado y borrado del token
 │  │  │
+│  │  ├─ constancias/           Solicitudes de constancia (M4 · US08, US09, US13)
+│  │  │  ├─ api/
+│  │  │  │  └─ solicitudesApi.ts    Llamadas a /solicitudes y traducción front ↔ back
+│  │  │  ├─ domain/
+│  │  │  │  ├─ busqueda.ts          Parámetros de la URL del listado
+│  │  │  │  ├─ formato.ts           Etiquetas, DNI y fechas
+│  │  │  │  └─ validacion.ts        Validación del formulario de solicitud
+│  │  │  ├─ components/             EstadoBadge, SolicitudForm, CancelarSolicitudDialog
+│  │  │  ├─ hooks/
+│  │  │  │  └─ useConsulta.ts       Carga asíncrona con estados cargando/error/listo
+│  │  │  └─ pages/                  Listado, alta, detalle y edición
+│  │  │
 │  │  └─ dashboard/
 │  │     └─ pages/
 │  │        └─ DashboardPage.tsx    Pantalla posterior al login
 │  │
 │  ├─ lib/
-│  │  └─ http.ts                Cliente Axios compartido (baseURL de la API)
+│  │  └─ http.ts                Cliente Axios compartido y ErrorApi
 │  │
 │  ├─ styles/
 │  │  ├─ index.css              Entrada de estilos: Tailwind + fuentes + tokens
@@ -140,14 +158,21 @@ pages / components  →  hooks  →  domain
 | `/` | Redirige según sesión | — |
 | `/login` | Pública; si hay sesión activa redirige a `/dashboard` | `LoginRoutePage` |
 | `/dashboard` | Requiere sesión activa | `DashboardPage` |
+| `/solicitudes` | Requiere sesión activa | `SolicitudesPage` (`?q=&estado=&orden=&pagina=`) |
+| `/solicitudes/nueva` | Requiere sesión activa | `NuevaSolicitudPage` |
+| `/solicitudes/$id` | Requiere sesión activa | `SolicitudDetallePage` |
+| `/solicitudes/$id/editar` | Requiere sesión activa | `EditarSolicitudPage` |
 | `/guia` | Pública (demo de diseño y prototipo) | `Guia` |
+
+Las rutas con sesión cuelgan de una ruta sin path (`id: "app"`) que tiene el guard y el `AppLayout`; por eso sus ids son `/app/...` (por ejemplo, `getRouteApi("/app/solicitudes")`).
 
 Flujo de autenticación:
 
-1. `main.tsx` monta `RouterProvider` con el router de `app/router.tsx`.
+1. `main.tsx` monta `RouterProvider` con el router de `app/router.tsx` e importa `app/configurarHttp.ts`.
 2. `beforeLoad` llama a `leerSesion()`, que lee el token de `localStorage` y revisa su `exp`.
-3. `LoginPage` valida credenciales, llama a `iniciarSesion()` en `authApi`, guarda el token y navega a `/dashboard`.
-4. `DashboardPage` borra el token al salir.
+3. `LoginPage` valida credenciales, llama a `iniciarSesion()` en `authApi`, guarda el `access_token` y navega a `/dashboard`.
+4. Cada pedido lleva `Authorization: Bearer <token>`. Si el back responde 401, se borra el token y se vuelve a `/login?sesionVencida=true`.
+5. El botón "Cerrar sesión" del riel borra el token.
 
 El token se guarda en `localStorage` con la clave `centralbv.token`. La API se configura con `VITE_API_URL` y por defecto apunta a `http://localhost:3000`.
 
@@ -205,9 +230,9 @@ Según [flujos.md](./flujos.md) y [roles.md](./roles.md), faltan estas features.
 src/features/
 ├─ auth/            Login y sesión (existe)
 ├─ dashboard/       Pantalla inicial (existe)
+├─ constancias/     Solicitudes (existe); falta generación de PDF, entrega y pago (M4 2/2)
 ├─ vehiculos/       Lista, detalle y ABM de móviles
 ├─ inspeccion/      Checklist, pausa/retoma y envío
-├─ constancias/     Formulario y generación de PDF
 └─ usuarios/        Gestión de usuarios, roles y permisos
 ```
 

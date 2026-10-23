@@ -26,6 +26,14 @@ npm run dev      # servidor de desarrollo
 npm run build    # build de producción
 ```
 
+### Conexión con el back
+
+El front llama a la API de `centralBV_back`. Antes de arrancar:
+
+1. Levantá el back (`npm run start:dev` en `centralBV_back`, con su `.env` completo).
+2. Si el back no corre en `http://localhost:3000`, copiá `.env.example` como `.env.local` y cambiá `VITE_API_URL`.
+3. Entrá a `/login`. Para usar Solicitudes, el usuario tiene que tener el rol `ADMINISTRATIVO` (el back devuelve 403 si no lo tiene).
+
 ## Estructura
 
 ```

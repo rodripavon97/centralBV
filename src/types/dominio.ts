@@ -46,6 +46,37 @@ export interface RespuestaItem {
   nota?: string;
 }
 
+/* Solicitudes de constancia (US08, US09, US13). En el back el estado es
+   PENDIENTE → REALIZADA → FIRMADA → RETIRADA, o CANCELADA (ver constancias/api.ts). */
+export type EstadoSolicitud = "pendiente" | "constancia_generada" | "firmada" | "entregada" | "cancelada";
+
+export type TipoSiniestro = "incendio_vivienda" | "incendio_vehicular" | "accidente_transito";
+
+export interface Damnificado {
+  nombre: string;
+  apellido: string;
+  dni: string; // solo dígitos: "30112456"
+  telefono?: string;
+  domicilio?: string;
+}
+
+export interface Siniestro {
+  tipo: TipoSiniestro;
+  fechaHora: string; // hora local, "2026-10-11T18:20"
+  lugar: string;
+  descripcion: string;
+}
+
+export interface Solicitud {
+  id: string;
+  numero: string; // "SOL-0147"
+  fechaAlta: string; // "2026-10-11", fecha local de Argentina
+  estado: EstadoSolicitud;
+  damnificado: Damnificado;
+  siniestro: Siniestro;
+  motivoCancelacion?: string;
+}
+
 export interface Inspeccion {
   id: string;
   vehiculoId: string;
