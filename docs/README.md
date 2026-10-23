@@ -30,32 +30,33 @@ npm run build    # build de producción
 
 El front llama a la API de `centralBV_back`. Antes de arrancar:
 
-1. Levantá el back (`pnpm start:dev` en `centralBV_back`, con su `.env` completo).
+1. Levantá el back (`npm run start:dev` en `centralBV_back`, con su `.env` completo).
 2. Si el back no corre en `http://localhost:3000`, copiá `.env.example` como `.env.local` y cambiá `VITE_API_URL`.
-3. Entrá a `/login` con un usuario con rol `ADMINISTRATIVO`. El token se guarda en `sessionStorage` y se borra al cerrar el navegador o al tocar "Cerrar sesión".
+3. Entrá a `/login`. Para usar Solicitudes, el usuario tiene que tener el rol `ADMINISTRATIVO` (el back devuelve 403 si no lo tiene).
 
 ## Estructura
 
 ```
 src/
-├─ app/                 router, providers y layout por rol
+├─ app/                 router, guards de sesión y composición de rutas
 ├─ components/
-│  ├─ ui/               shadcn (generado por el CLI)
-│  └─ centralbv/        componentes propios: readout, check-item, compartimento, navegación
-├─ features/
-│  ├─ inspeccion/
-│  ├─ vehiculos/
-│  ├─ constancias/
-│  └─ usuarios/
-├─ lib/utils.ts
+│  ├─ ui/               shadcn (se crea al sumar el primer componente)
+│  └─ centralbv/        componentes propios reutilizables
+├─ features/            una carpeta por funcionalidad
+│  ├─ auth/             login y sesión
+│  ├─ dashboard/        pantalla inicial
+│  └─ …                 inspeccion, vehiculos, constancias, usuarios
+├─ lib/                 infraestructura compartida (HTTP)
 ├─ styles/
-│  ├─ index.css
+│  ├─ index.css         entrada de Tailwind y fuentes
 │  └─ tokens.css        única fuente de verdad de los tokens en código
 └─ types/dominio.ts     modelo de datos
 docs/                   esta documentación
 ```
 
 Se organiza por `features` y no por tipo de archivo, para que tocar la inspección no obligue a saltar entre cinco carpetas.
+
+Árbol completo, responsabilidades por carpeta, reglas de dependencia y guía para agregar features: [estructura.md](./estructura.md).
 
 ## Diseño (Figma)
 

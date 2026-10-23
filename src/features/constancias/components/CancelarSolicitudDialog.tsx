@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CircleX } from "lucide-react";
 import { Button } from "@/components/centralbv/Button";
 import { Field, Textarea } from "@/components/centralbv/Field";
-import { Alert } from "@/components/centralbv/Feedback";
+import { Alert } from "@/components/centralbv/Alert";
 
 /** Confirmación de cancelación con motivo obligatorio (US13 y T19). */
 export default function CancelarSolicitudDialog({

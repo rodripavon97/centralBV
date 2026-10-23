@@ -22,7 +22,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
 
-    /* Alias "@/" (igual que en vite.config.ts) */
+    /* Alias de rutas */
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src"]

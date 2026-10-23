@@ -1,6 +1,6 @@
-import { useNavigate } from "react-router";
-import { crearSolicitud } from "./api";
-import SolicitudForm from "./SolicitudForm";
+import { useNavigate } from "@tanstack/react-router";
+import { crearSolicitud } from "../api/solicitudesApi";
+import SolicitudForm from "../components/SolicitudForm";
 
 export default function NuevaSolicitudPage() {
   const navigate = useNavigate();
@@ -15,9 +15,9 @@ export default function NuevaSolicitudPage() {
         mostrarEstadoInicial
         onGuardar={async (datos) => {
           const nueva = await crearSolicitud(datos);
-          navigate("/solicitudes", { state: { creada: nueva.numero } });
+          await navigate({ to: "/solicitudes", state: { creada: nueva.numero } });
         }}
-        onCancelar={() => navigate("/solicitudes")}
+        onCancelar={() => void navigate({ to: "/solicitudes" })}
       />
     </div>
   );

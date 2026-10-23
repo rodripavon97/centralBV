@@ -1,18 +1,21 @@
 import { useState, type ReactNode } from "react";
-import { useLocation, useParams } from "react-router";
+import { getRouteApi, useLocation } from "@tanstack/react-router";
 import { Ban, CircleCheck, CircleX, FileText, Lock, Pencil, RotateCcw, SearchX } from "lucide-react";
 import type { Solicitud } from "@/types/dominio";
 import { Button, ButtonLink } from "@/components/centralbv/Button";
-import { Alert, EmptyState } from "@/components/centralbv/Feedback";
-import { cancelarSolicitud, obtenerSolicitud } from "./api";
-import { TIPOS_SINIESTRO, formatearDni, formatearFechaHora } from "./formato";
-import { useConsulta } from "./useConsulta";
-import CancelarSolicitudDialog from "./CancelarSolicitudDialog";
-import EstadoBadge from "./EstadoBadge";
+import { Alert } from "@/components/centralbv/Alert";
+import { EmptyState } from "@/components/centralbv/EmptyState";
+import { cancelarSolicitud, obtenerSolicitud } from "../api/solicitudesApi";
+import { TIPOS_SINIESTRO, formatearDni, formatearFechaHora } from "../domain/formato";
+import { useConsulta } from "../hooks/useConsulta";
+import CancelarSolicitudDialog from "../components/CancelarSolicitudDialog";
+import EstadoBadge from "../components/EstadoBadge";
+
+const ruta = getRouteApi("/app/solicitudes/$id");
 
 export default function SolicitudDetallePage() {
-  const { id = "" } = useParams();
-  const editada = (useLocation().state as { editada?: boolean } | null)?.editada;
+  const { id } = ruta.useParams();
+  const editada = useLocation({ select: (l) => l.state.editada });
   const { consulta, reintentar } = useConsulta(id, () => obtenerSolicitud(id));
   // Después de cancelar se muestra la versión actualizada sin volver a pedirla.
   const [actualizada, setActualizada] = useState<Solicitud>();
@@ -89,7 +92,7 @@ function Detalle({
         </div>
         <div className="flex flex-wrap gap-3">
           {pendiente ? (
-            <ButtonLink to={`/solicitudes/${s.id}/editar`}>
+            <ButtonLink to="/solicitudes/$id/editar" params={{ id: s.id }}>
               <Pencil size={16} strokeWidth={1.5} aria-hidden />
               Editar
             </ButtonLink>

@@ -1,18 +1,20 @@
-import { useNavigate, useParams } from "react-router";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { CircleX, Lock, RotateCcw, SearchX } from "lucide-react";
 import { Button, ButtonLink } from "@/components/centralbv/Button";
-import { EmptyState } from "@/components/centralbv/Feedback";
-import { actualizarSolicitud, obtenerSolicitud } from "./api";
-import { ESTADOS_SOLICITUD } from "./formato";
-import { useConsulta } from "./useConsulta";
-import { valoresDesdeSolicitud } from "./validacion";
-import SolicitudForm from "./SolicitudForm";
+import { EmptyState } from "@/components/centralbv/EmptyState";
+import { actualizarSolicitud, obtenerSolicitud } from "../api/solicitudesApi";
+import { ESTADOS_SOLICITUD } from "../domain/formato";
+import { useConsulta } from "../hooks/useConsulta";
+import { valoresDesdeSolicitud } from "../domain/validacion";
+import SolicitudForm from "../components/SolicitudForm";
+
+const ruta = getRouteApi("/app/solicitudes/$id/editar");
 
 export default function EditarSolicitudPage() {
-  const { id = "" } = useParams();
+  const { id } = ruta.useParams();
   const navigate = useNavigate();
   const { consulta, reintentar } = useConsulta(id, () => obtenerSolicitud(id));
-  const volver = () => navigate(`/solicitudes/${id}`);
+  const volver = () => void navigate({ to: "/solicitudes/$id", params: { id } });
 
   if (consulta.estado === "cargando") {
     return <p role="status" className="text-sm text-text-muted">Cargando solicitud…</p>;
@@ -50,7 +52,7 @@ export default function EditarSolicitudPage() {
         icon={Lock}
         title="Esta solicitud no se puede editar"
         description={`Solo se editan las solicitudes pendientes. ${solicitud.numero} está ${ESTADOS_SOLICITUD[solicitud.estado].toLowerCase()}.`}
-        action={<ButtonLink to={`/solicitudes/${id}`}>Ver solicitud</ButtonLink>}
+        action={<ButtonLink to="/solicitudes/$id" params={{ id }}>Ver solicitud</ButtonLink>}
       />
     );
   }
@@ -69,7 +71,7 @@ export default function EditarSolicitudPage() {
         textoGuardar="Guardar cambios"
         onGuardar={async (datos) => {
           await actualizarSolicitud(id, datos);
-          navigate(`/solicitudes/${id}`, { state: { editada: true } });
+          await navigate({ to: "/solicitudes/$id", params: { id }, state: { editada: true } });
         }}
         onCancelar={volver}
       />

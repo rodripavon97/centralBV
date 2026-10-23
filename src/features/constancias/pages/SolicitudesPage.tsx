@@ -1,40 +1,41 @@
 import { useEffect, useState, type MouseEvent } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
-import { ArrowDown, ArrowUp, CircleCheck, CircleX, FileText, Plus, RotateCcw, Search } from "lucide-react";
-import type { EstadoSolicitud } from "@/types/dominio";
+import { Link, getRouteApi, useLocation, useNavigate } from "@tanstack/react-router";
+import { ArrowDown, ArrowUp, CircleCheck, CircleX, FileText, Lock, Plus, RotateCcw, Search } from "lucide-react";
+import { Alert } from "@/components/centralbv/Alert";
 import { Button, ButtonLink } from "@/components/centralbv/Button";
+import { EmptyState } from "@/components/centralbv/EmptyState";
 import { focus } from "@/components/centralbv/estilos";
 import { Input, Select } from "@/components/centralbv/Field";
-import { Alert, EmptyState } from "@/components/centralbv/Feedback";
-import { POR_PAGINA, listarSolicitudes, type FiltroSolicitudes, type PaginaSolicitudes } from "./api";
-import { ESTADOS_SOLICITUD, TIPOS_SINIESTRO, formatearDni, formatearFecha } from "./formato";
-import { useConsulta } from "./useConsulta";
-import EstadoBadge from "./EstadoBadge";
+import { ErrorApi } from "@/lib/http";
+import {
+  POR_PAGINA,
+  listarSolicitudes,
+  type FiltroSolicitudes,
+  type PaginaSolicitudes,
+} from "../api/solicitudesApi";
+import type { BusquedaSolicitudes } from "../domain/busqueda";
+import { ESTADOS_SOLICITUD, TIPOS_SINIESTRO, formatearDni, formatearFecha } from "../domain/formato";
+import { useConsulta } from "../hooks/useConsulta";
+import EstadoBadge from "../components/EstadoBadge";
+
+const ruta = getRouteApi("/app/solicitudes");
 
 const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
 
 export default function SolicitudesPage() {
-  const [params, setParams] = useSearchParams();
-  const creada = (useLocation().state as { creada?: string } | null)?.creada;
+  const search = ruta.useSearch();
+  const navigate = ruta.useNavigate();
+  const creada = useLocation({ select: (l) => l.state.creada });
 
-  const q = params.get("q") ?? "";
-  const estado = (params.get("estado") ?? "") as EstadoSolicitud | "";
-  const orden = params.get("orden") === "asc" ? "asc" : "desc";
-  const pagina = Number(params.get("pagina")) || 1;
+  const q = search.q ?? "";
+  const estado = search.estado;
+  const orden = search.orden ?? "desc";
+  const pagina = search.pagina ?? 1;
   const hayFiltros = Boolean(q || estado);
 
-  const actualizar = (cambios: Record<string, string | null>) =>
-    setParams(
-      (prev) => {
-        const sig = new URLSearchParams(prev);
-        for (const [k, v] of Object.entries(cambios)) {
-          if (v) sig.set(k, v);
-          else sig.delete(k);
-        }
-        return sig;
-      },
-      { replace: true },
-    );
+  // Los filtros viven en la URL: se pueden compartir y sobreviven al "atrás".
+  const actualizar = (cambios: Partial<BusquedaSolicitudes>) =>
+    navigate({ search: (prev) => ({ ...prev, ...cambios }), replace: true });
 
   // La búsqueda se escribe en un estado local y pasa a la URL con un pequeño retraso.
   const [texto, setTexto] = useState(q);
@@ -45,18 +46,18 @@ export default function SolicitudesPage() {
   }
   useEffect(() => {
     if (texto.trim() === q) return;
-    const t = setTimeout(() => actualizar({ q: texto.trim() || null, pagina: null }), 250);
+    const t = setTimeout(() => actualizar({ q: texto.trim() || undefined, pagina: undefined }), 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [texto, q]);
 
-  const filtro: FiltroSolicitudes = { busqueda: q, estado: estado || undefined, orden, pagina };
+  const filtro: FiltroSolicitudes = { busqueda: q, estado, orden, pagina };
   const { consulta, anterior, reintentar } = useConsulta(JSON.stringify(filtro), () => listarSolicitudes(filtro));
   const datos = consulta.estado === "listo" ? consulta.datos : consulta.estado === "cargando" ? anterior : undefined;
 
   const limpiar = () => {
     setTexto("");
-    actualizar({ q: null, estado: null, pagina: null });
+    actualizar({ q: undefined, estado: undefined, pagina: undefined });
   };
 
   let subtitulo = "";
@@ -71,6 +72,7 @@ export default function SolicitudesPage() {
 
   const sinSolicitudes = consulta.estado === "listo" && consulta.datos.total === 0 && !hayFiltros;
   const mostrarFiltros = consulta.estado !== "error" && !sinSolicitudes;
+  const sinPermiso = consulta.estado === "error" && consulta.error instanceof ErrorApi && consulta.error.status === 403;
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -79,10 +81,12 @@ export default function SolicitudesPage() {
           <h1 className="text-xl font-semibold">Solicitudes</h1>
           {subtitulo && <p className="text-sm text-text-muted">{subtitulo}</p>}
         </div>
-        <ButtonLink to="/solicitudes/nueva" variant="primary">
-          <Plus size={16} strokeWidth={1.5} aria-hidden />
-          Nueva solicitud
-        </ButtonLink>
+        {!sinPermiso && (
+          <ButtonLink to="/solicitudes/nueva" variant="primary">
+            <Plus size={16} strokeWidth={1.5} aria-hidden />
+            Nueva solicitud
+          </ButtonLink>
+        )}
       </header>
 
       {creada && (
@@ -111,8 +115,13 @@ export default function SolicitudesPage() {
           </div>
           <Select
             aria-label="Filtrar por estado"
-            value={estado}
-            onChange={(e) => actualizar({ estado: e.target.value || null, pagina: null })}
+            value={estado ?? ""}
+            onChange={(e) =>
+              actualizar({
+                estado: (e.target.value || undefined) as BusquedaSolicitudes["estado"],
+                pagina: undefined,
+              })
+            }
             className="w-full sm:w-56"
           >
             <option value="">Todos los estados</option>
@@ -125,7 +134,13 @@ export default function SolicitudesPage() {
         </div>
       )}
 
-      {consulta.estado === "error" ? (
+      {sinPermiso ? (
+        <EmptyState
+          icon={Lock}
+          title="No tenés acceso a las solicitudes"
+          description="Tu usuario no tiene el rol Administrativo. Pedíselo al administrador general."
+        />
+      ) : consulta.estado === "error" ? (
         <EmptyState
           tone="danger"
           icon={CircleX}
@@ -164,8 +179,8 @@ export default function SolicitudesPage() {
           datos={datos}
           actualizando={consulta.estado === "cargando"}
           orden={orden}
-          onOrden={() => actualizar({ orden: orden === "desc" ? "asc" : null, pagina: null })}
-          onPagina={(p) => actualizar({ pagina: p > 1 ? String(p) : null })}
+          onOrden={() => actualizar({ orden: orden === "desc" ? "asc" : undefined, pagina: undefined })}
+          onPagina={(p) => actualizar({ pagina: p > 1 ? p : undefined })}
         />
       )}
     </div>
@@ -196,7 +211,7 @@ function Tabla({
 
   const abrir = (e: MouseEvent, id: string) => {
     // El n.º de solicitud ya es un link: no navegar dos veces.
-    if (!(e.target as HTMLElement).closest("a")) navigate(`/solicitudes/${id}`);
+    if (!(e.target as HTMLElement).closest("a")) void navigate({ to: "/solicitudes/$id", params: { id } });
   };
 
   return (
@@ -236,7 +251,11 @@ function Tabla({
                 className="cursor-pointer border-t border-border-subtle hover:bg-bg-raised"
               >
                 <td className={td}>
-                  <Link to={`/solicitudes/${s.id}`} className={`text-code rounded-sm font-medium ${focus}`}>
+                  <Link
+                    to="/solicitudes/$id"
+                    params={{ id: s.id }}
+                    className={`text-code rounded-sm font-medium ${focus}`}
+                  >
                     {s.numero}
                   </Link>
                 </td>

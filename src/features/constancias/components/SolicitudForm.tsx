@@ -3,8 +3,8 @@ import { CircleX } from "lucide-react";
 import { Button } from "@/components/centralbv/Button";
 import { Field, Input, Select, Textarea } from "@/components/centralbv/Field";
 import { fieldProps } from "@/components/centralbv/estilos";
-import { Alert } from "@/components/centralbv/Feedback";
-import { TIPOS_SINIESTRO } from "./formato";
+import { Alert } from "@/components/centralbv/Alert";
+import { TIPOS_SINIESTRO } from "../domain/formato";
 import {
   CAMPOS,
   VALORES_VACIOS,
@@ -13,7 +13,7 @@ import {
   type CampoSolicitud,
   type DatosSolicitud,
   type ValoresSolicitud,
-} from "./validacion";
+} from "../domain/validacion";
 import EstadoBadge from "./EstadoBadge";
 
 /** Formulario de alta (US08) y de edición (US13). */

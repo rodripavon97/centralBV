@@ -1,35 +1,6 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
-type Tone = "ok" | "danger" | "info" | "neutral";
-
-const alertTones: Record<Tone, string> = {
-  ok: "border-state-ok bg-state-ok-bg text-state-ok",
-  info: "border-state-info bg-state-info-bg text-state-info",
-  danger: "border-state-danger bg-state-danger-bg text-state-danger",
-  neutral: "border-border-subtle bg-bg-raised text-text-secondary",
-};
-
-/** Mensaje en línea: confirmaciones, resumen de errores y avisos. */
-export function Alert({
-  tone,
-  icon: Icon,
-  children,
-  role,
-}: {
-  tone: Tone;
-  icon: LucideIcon;
-  children: ReactNode;
-  role?: "status" | "alert";
-}) {
-  return (
-    <div role={role} className={`flex items-start gap-2 rounded-lg border px-4 py-2.5 text-sm ${alertTones[tone]}`}>
-      <Icon size={16} strokeWidth={1.5} aria-hidden className="mt-0.5 shrink-0" />
-      <div>{children}</div>
-    </div>
-  );
-}
-
 /** Panel para las versiones vacía, sin resultados y de error de una pantalla. */
 export function EmptyState({
   icon: Icon,

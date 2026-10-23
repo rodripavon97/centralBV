@@ -1,10 +1,11 @@
 import type { EstadoSolicitud, Solicitud, TipoSiniestro } from "@/types/dominio";
-import { ErrorApi, pedir } from "@/lib/http";
-import type { DatosSolicitud } from "./validacion";
+import { ErrorApi, aErrorApi, http } from "@/lib/http";
+import type { DatosSolicitud } from "../domain/validacion";
 
-/* Capa de datos de solicitudes: llama a /solicitudes del back (NestJS).
+/* Llamadas a /solicitudes de centralBV_back (US08, US09, US13).
    Acá se traducen los nombres del back (PENDIENTE, VIVIENDA, fechas ISO)
-   a los del front, así las pantallas no dependen del formato de la API. */
+   a los del front, así las pantallas no dependen del formato de la API.
+   El token lo agrega el interceptor de src/app/configurarHttp.ts. */
 
 export const POR_PAGINA = 20;
 
@@ -46,7 +47,7 @@ const invertir = <K extends string, V extends string>(r: Record<K, V>) =>
 const ESTADO_DESDE_API = invertir(ESTADO_A_API);
 const TIPO_DESDE_API = invertir(TIPO_A_API);
 
-interface SolicitudApi {
+export interface SolicitudApi {
   id: string;
   numero: string;
   estado: EstadoApi;
@@ -60,7 +61,7 @@ interface SolicitudApi {
 const fechaLocal = (iso: string) =>
   new Date(iso).toLocaleDateString("sv-SE", { timeZone: "America/Argentina/Buenos_Aires" });
 
-function desdeApi(s: SolicitudApi): Solicitud {
+export function desdeApi(s: SolicitudApi): Solicitud {
   return {
     id: s.id,
     numero: s.numero,
@@ -83,49 +84,57 @@ function desdeApi(s: SolicitudApi): Solicitud {
   };
 }
 
-const aApi = ({ damnificado, siniestro }: DatosSolicitud) => ({
+export const aApi = ({ damnificado, siniestro }: DatosSolicitud) => ({
   damnificado,
   siniestro: { ...siniestro, tipo: TIPO_A_API[siniestro.tipo] },
 });
 
+/** Espera la respuesta de axios y convierte cualquier error en ErrorApi. */
+async function datosDe<T>(pedido: Promise<{ data: T }>): Promise<T> {
+  try {
+    return (await pedido).data;
+  } catch (error) {
+    throw aErrorApi(error);
+  }
+}
+
 /* ---------- Endpoints ---------- */
 
 export async function listarSolicitudes(filtro: FiltroSolicitudes): Promise<PaginaSolicitudes> {
-  const r = await pedir<{ items: SolicitudApi[]; total: number; pagina: number; paginas: number }>("/solicitudes", {
-    query: {
-      busqueda: filtro.busqueda?.trim(),
-      estado: filtro.estado && ESTADO_A_API[filtro.estado],
-      orden: filtro.orden ?? "desc",
-      pagina: filtro.pagina ?? 1,
-      porPagina: POR_PAGINA,
-    },
-  });
+  const r = await datosDe(
+    http.get<{ items: SolicitudApi[]; total: number; pagina: number; paginas: number }>("/solicitudes", {
+      params: {
+        busqueda: filtro.busqueda?.trim() || undefined,
+        estado: filtro.estado && ESTADO_A_API[filtro.estado],
+        orden: filtro.orden ?? "desc",
+        pagina: filtro.pagina ?? 1,
+        porPagina: POR_PAGINA,
+      },
+    }),
+  );
   return { items: r.items.map(desdeApi), total: r.total, pagina: r.pagina, paginas: r.paginas };
 }
 
 export async function obtenerSolicitud(id: string): Promise<Solicitud | null> {
   try {
-    return desdeApi(await pedir<SolicitudApi>(`/solicitudes/${encodeURIComponent(id)}`));
-  } catch (err) {
+    return desdeApi(await datosDe(http.get<SolicitudApi>(`/solicitudes/${encodeURIComponent(id)}`)));
+  } catch (error) {
     // 404: no existe. 400: el id ni siquiera tiene formato válido.
-    if (err instanceof ErrorApi && (err.status === 404 || err.status === 400)) return null;
-    throw err;
+    if (error instanceof ErrorApi && (error.status === 404 || error.status === 400)) return null;
+    throw error;
   }
 }
 
 export async function crearSolicitud(datos: DatosSolicitud): Promise<Solicitud> {
-  return desdeApi(await pedir<SolicitudApi>("/solicitudes", { metodo: "POST", cuerpo: aApi(datos) }));
+  return desdeApi(await datosDe(http.post<SolicitudApi>("/solicitudes", aApi(datos))));
 }
 
 export async function actualizarSolicitud(id: string, datos: DatosSolicitud): Promise<Solicitud> {
-  return desdeApi(await pedir<SolicitudApi>(`/solicitudes/${encodeURIComponent(id)}`, { metodo: "PUT", cuerpo: aApi(datos) }));
+  return desdeApi(await datosDe(http.put<SolicitudApi>(`/solicitudes/${encodeURIComponent(id)}`, aApi(datos))));
 }
 
 export async function cancelarSolicitud(id: string, motivo: string): Promise<Solicitud> {
   return desdeApi(
-    await pedir<SolicitudApi>(`/solicitudes/${encodeURIComponent(id)}/cancelar`, {
-      metodo: "PATCH",
-      cuerpo: { motivo: motivo.trim() },
-    }),
+    await datosDe(http.patch<SolicitudApi>(`/solicitudes/${encodeURIComponent(id)}/cancelar`, { motivo: motivo.trim() })),
   );
 }

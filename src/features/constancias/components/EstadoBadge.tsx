@@ -1,6 +1,6 @@
 import { CircleDashed, CircleX, FileText, PackageCheck, PenLine, type LucideIcon } from "lucide-react";
 import type { EstadoSolicitud } from "@/types/dominio";
-import { ESTADOS_SOLICITUD } from "./formato";
+import { ESTADOS_SOLICITUD } from "../domain/formato";
 
 // Nunca solo color: cada estado lleva glifo y texto.
 type Tono = "neutral" | "info" | "ok" | "danger";
