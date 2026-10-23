@@ -10,6 +10,7 @@ export const ESTADOS_SOLICITUD: Record<EstadoSolicitud, string> = {
   pendiente: "Pendiente",
   constancia_generada: "Constancia generada",
   firmada: "Firmada",
+  entregada: "Entregada",
   cancelada: "Cancelada",
 };
 

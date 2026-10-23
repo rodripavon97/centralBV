@@ -1,6 +1,7 @@
-import { FileText, Flame, LayoutGrid, Truck, Users, type LucideIcon } from "lucide-react";
-import { NavLink, Outlet } from "react-router";
+import { FileText, Flame, LayoutGrid, LogOut, Truck, Users, type LucideIcon } from "lucide-react";
+import { NavLink, Outlet, useNavigate } from "react-router";
 import { focus } from "@/components/centralbv/estilos";
+import { cerrarSesion, leerSesion } from "@/lib/sesion";
 
 /* Riel lateral del rol administrativo. Por ahora solo existe Solicitudes;
    el resto de los destinos se habilita a medida que se implementan. */
@@ -14,6 +15,13 @@ const destinos: { label: string; icon: LucideIcon; to?: string }[] = [
 const item = `flex size-10 items-center justify-center rounded-lg ${focus}`;
 
 export default function AppLayout() {
+  const navigate = useNavigate();
+  const usuario = leerSesion()?.usuario;
+  const salir = () => {
+    cerrarSesion();
+    navigate("/login", { replace: true });
+  };
+
   return (
     <div className="flex min-h-screen bg-bg-base text-text-primary">
       <nav
@@ -51,6 +59,15 @@ export default function AppLayout() {
             </li>
           ))}
         </ul>
+        <button
+          type="button"
+          onClick={salir}
+          title={usuario ? `Cerrar sesión (${usuario.email})` : "Cerrar sesión"}
+          className={`${item} mt-auto text-text-muted hover:bg-bg-raised hover:text-text-primary`}
+        >
+          <LogOut size={20} strokeWidth={1.5} aria-hidden />
+          <span className="sr-only">Cerrar sesión</span>
+        </button>
       </nav>
       <main className="flex min-w-0 flex-1 flex-col px-(--layout-margin) py-8">
         <Outlet />

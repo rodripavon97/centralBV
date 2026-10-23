@@ -26,6 +26,14 @@ npm run dev      # servidor de desarrollo
 npm run build    # build de producción
 ```
 
+### Conexión con el back
+
+El front llama a la API de `centralBV_back`. Antes de arrancar:
+
+1. Levantá el back (`pnpm start:dev` en `centralBV_back`, con su `.env` completo).
+2. Si el back no corre en `http://localhost:3000`, copiá `.env.example` como `.env.local` y cambiá `VITE_API_URL`.
+3. Entrá a `/login` con un usuario con rol `ADMINISTRATIVO`. El token se guarda en `sessionStorage` y se borra al cerrar el navegador o al tocar "Cerrar sesión".
+
 ## Estructura
 
 ```

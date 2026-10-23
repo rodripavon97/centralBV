@@ -46,10 +46,10 @@ export interface RespuestaItem {
   nota?: string;
 }
 
-/* Solicitudes de constancia (US08, US09, US13). El estado "entregada" llega con US12. */
-export type EstadoSolicitud = "pendiente" | "constancia_generada" | "firmada" | "cancelada";
+/* Solicitudes de constancia (US08, US09, US13). En el back el estado es
+   PENDIENTE → REALIZADA → FIRMADA → RETIRADA, o CANCELADA (ver constancias/api.ts). */
+export type EstadoSolicitud = "pendiente" | "constancia_generada" | "firmada" | "entregada" | "cancelada";
 
-// Pendiente de definir la lista exacta; estos son los tipos que usa el diseño.
 export type TipoSiniestro = "incendio_vivienda" | "incendio_vehicular" | "accidente_transito";
 
 export interface Damnificado {
@@ -70,7 +70,7 @@ export interface Siniestro {
 export interface Solicitud {
   id: string;
   numero: string; // "SOL-0147"
-  fechaAlta: string; // "2026-10-11"
+  fechaAlta: string; // "2026-10-11", fecha local de Argentina
   estado: EstadoSolicitud;
   damnificado: Damnificado;
   siniestro: Siniestro;

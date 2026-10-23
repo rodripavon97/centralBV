@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
-type Tone = "ok" | "danger" | "neutral";
+type Tone = "ok" | "danger" | "info" | "neutral";
 
 const alertTones: Record<Tone, string> = {
   ok: "border-state-ok bg-state-ok-bg text-state-ok",
+  info: "border-state-info bg-state-info-bg text-state-info",
   danger: "border-state-danger bg-state-danger-bg text-state-danger",
   neutral: "border-border-subtle bg-bg-raised text-text-secondary",
 };

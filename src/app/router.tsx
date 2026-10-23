@@ -1,14 +1,21 @@
 import { createBrowserRouter, Navigate } from "react-router";
 import AppLayout from "./AppLayout";
+import RequireAuth from "./RequireAuth";
 import DesignSystem from "@/App";
+import LoginPage from "@/features/acceso/LoginPage";
 import SolicitudesPage from "@/features/constancias/SolicitudesPage";
 import NuevaSolicitudPage from "@/features/constancias/NuevaSolicitudPage";
 import SolicitudDetallePage from "@/features/constancias/SolicitudDetallePage";
 import EditarSolicitudPage from "@/features/constancias/EditarSolicitudPage";
 
 export const router = createBrowserRouter([
+  { path: "login", element: <LoginPage /> },
   {
-    element: <AppLayout />,
+    element: (
+      <RequireAuth>
+        <AppLayout />
+      </RequireAuth>
+    ),
     children: [
       { index: true, element: <Navigate to="/solicitudes" replace /> },
       { path: "solicitudes", element: <SolicitudesPage /> },

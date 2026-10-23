@@ -74,6 +74,7 @@ function Detalle({
   const bloqueo: Partial<Record<Solicitud["estado"], string>> = {
     constancia_generada: "La constancia ya fue generada: no se puede editar ni cancelar.",
     firmada: "La solicitud ya fue firmada: no se puede editar ni cancelar.",
+    entregada: "La constancia ya fue entregada: no se puede editar ni cancelar.",
   };
 
   return (
