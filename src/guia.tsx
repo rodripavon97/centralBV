@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { CircleCheck, TriangleAlert, OctagonX, Wrench, CirclePause } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { CircleCheck, TriangleAlert, OctagonX, Wrench } from "lucide-react";
 import Cad from "./Cad";
 
 /* Página "storybook" de centralBV: colores y tipografía.
@@ -14,7 +14,7 @@ const t = (figma: string, name: string, note: string): Token => ({
   note,
 });
 
-const surfaces: Token[] = [
+export const surfaces: Token[] = [
   t("bg/base", "bg-base", "Fondo de la app"),
   t("bg/surface", "bg-surface", "Paneles, tarjetas, formularios"),
   t("bg/raised", "bg-raised", "Hover, inputs, elevados"),
@@ -24,14 +24,14 @@ const surfaces: Token[] = [
   t("line/schematic", "line-schematic", "Trazo del plano"),
 ];
 
-const texts: Token[] = [
+export const texts: Token[] = [
   t("text/primary", "text-primary", "Texto principal"),
   t("text/secondary", "text-secondary", "Texto de apoyo"),
   t("text/muted", "text-muted", "Etiquetas y metadatos"),
   t("text/disabled", "text-disabled", "Deshabilitado"),
 ];
 
-const redScale: [string, string][] = [
+export const redScale: [string, string][] = [
   ["50", ""],
   ["100", ""],
   ["200", ""],
@@ -44,14 +44,14 @@ const redScale: [string, string][] = [
   ["900", "accent/subtle"],
 ];
 
-const states = [
+export const states = [
   { name: "Operativo", key: "ok", Icon: CircleCheck },
   { name: "Con observaciones", key: "warn", Icon: TriangleAlert },
   { name: "Fuera de servicio", key: "danger", Icon: OctagonX },
   { name: "En mantenimiento", key: "info", Icon: Wrench },
 ] as const;
 
-const interScale = [
+export const interScale = [
   { cls: "text-xs font-normal", name: "text-xs", spec: "12 / 16 · 0.75rem" },
   { cls: "text-sm font-normal", name: "text-sm", spec: "14 / 20 · 0.875rem" },
   { cls: "text-base font-normal", name: "text-base", spec: "16 / 24 · 1rem" },
@@ -61,25 +61,23 @@ const interScale = [
   { cls: "text-3xl font-semibold", name: "text-3xl", spec: "40 / 48 · 2.5rem" },
 ];
 
-const monoStyles = [
+export const monoStyles = [
   { cls: "text-eyebrow", name: "text-eyebrow", spec: "12 / 16 · 500 · MAYÚSCULAS · tracking 8%", sample: "Kilometraje" },
   { cls: "text-code text-text-primary", name: "text-code", spec: "14 / 20 · 400", sample: "AB-03 · BL-2 · AC 412 PL" },
   { cls: "text-readout text-text-primary", name: "text-readout", spec: "32 / 40 · 500", sample: "17.389 km" },
   { cls: "text-readout-lg text-text-primary", name: "text-readout-lg", spec: "40 / 48 · 500", sample: "48.210" },
 ];
 
-const SAMPLE = "La cigüeña tocaba el saxofón detrás del palenque de paja";
+export const SAMPLE = "La cigüeña tocaba el saxofón detrás del palenque de paja";
 
-function useHex(cssVar: string) {
-  const [hex, setHex] = useState("");
-  useEffect(() => {
-    const v = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
-    setHex(v.toUpperCase());
-  }, [cssVar]);
+export function useHex(cssVar: string) {
+  const [hex] = useState(() =>
+    getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim().toUpperCase(),
+  );
   return hex;
 }
 
-function useCopy(value: string) {
+export function useCopy(value: string) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
     if (!value) return;
@@ -90,10 +88,10 @@ function useCopy(value: string) {
   return { copied, copy };
 }
 
-const focus =
+export const focus =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-text focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base";
 
-function Swatch({ token, kind = "fill" }: { token: Token; kind?: "fill" | "text" }) {
+export function Swatch({ token, kind = "fill" }: { token: Token; kind?: "fill" | "text" }) {
   const hex = useHex(token.cssVar);
   const { copied, copy } = useCopy(hex);
   return (
@@ -121,7 +119,7 @@ function Swatch({ token, kind = "fill" }: { token: Token; kind?: "fill" | "text"
   );
 }
 
-function HexLine({ label, cssVar }: { label: string; cssVar: string }) {
+export function HexLine({ label, cssVar }: { label: string; cssVar: string }) {
   const hex = useHex(cssVar);
   return (
     <div className="flex items-center gap-2">
@@ -135,7 +133,7 @@ function HexLine({ label, cssVar }: { label: string; cssVar: string }) {
   );
 }
 
-function Badge({ tone, children }: { tone: "ok" | "warn" | "danger" | "info" | "paused"; children: ReactNode }) {
+export function Badge({ tone, children }: { tone: "ok" | "warn" | "danger" | "info" | "paused"; children: ReactNode }) {
   const style =
     tone === "paused"
       ? undefined
@@ -156,7 +154,7 @@ function Badge({ tone, children }: { tone: "ok" | "warn" | "danger" | "info" | "
   );
 }
 
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+export function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <section id={id} className="flex flex-col gap-8">
       <h2 className="border-b border-border-strong pb-2 text-2xl font-semibold">{title}</h2>
@@ -165,7 +163,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
   );
 }
 
-function Group({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+export function Group({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
@@ -177,7 +175,7 @@ function Group({ title, hint, children }: { title: string; hint?: string; childr
   );
 }
 
-const grid = "grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4";
+export const grid = "grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4";
 
 export default function DesignSystem() {
   return (
