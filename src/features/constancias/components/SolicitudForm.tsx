@@ -4,7 +4,7 @@ import { Button } from "@/components/centralbv/Button";
 import { Field, Input, Select, Textarea } from "@/components/centralbv/Field";
 import { fieldProps } from "@/components/centralbv/estilos";
 import { Alert } from "@/components/centralbv/Alert";
-import { TIPOS_SINIESTRO } from "../domain/formato";
+import { DESTINOS_CONSTANCIA, TIPOS_SINIESTRO } from "../domain/formato";
 import {
   CAMPOS,
   VALORES_VACIOS,
@@ -71,20 +71,14 @@ export default function SolicitudForm({
   return (
     <form noValidate onSubmit={guardar} className="flex max-w-(--content-form-max) flex-col gap-6">
       <Seccion titulo="Damnificado">
-        <Field id="nombre" label="Nombre" required error={errores.nombre}>
+        <Field id="nombre" label="Nombre y apellido" required error={errores.nombre} className="md:col-span-2">
           <Input autoComplete="off" {...control("nombre")} />
-        </Field>
-        <Field id="apellido" label="Apellido" required error={errores.apellido}>
-          <Input autoComplete="off" {...control("apellido")} />
         </Field>
         <Field id="dni" label="DNI" required error={errores.dni}>
           <Input inputMode="numeric" autoComplete="off" className="font-mono" {...control("dni")} />
         </Field>
         <Field id="telefono" label="Teléfono" error={errores.telefono}>
           <Input type="tel" inputMode="tel" autoComplete="off" className="font-mono" {...control("telefono", false)} />
-        </Field>
-        <Field id="domicilio" label="Domicilio" error={errores.domicilio} className="md:col-span-2">
-          <Input autoComplete="off" {...control("domicilio", false)} />
         </Field>
       </Seccion>
 
@@ -101,15 +95,58 @@ export default function SolicitudForm({
             ))}
           </Select>
         </Field>
-        <Field id="fechaHora" label="Fecha y hora" required error={errores.fechaHora}>
-          <Input placeholder="dd/mm/aaaa hh:mm" autoComplete="off" className="font-mono" {...control("fechaHora")} />
+        <Field id="fecha" label="Fecha" required error={errores.fecha}>
+          <Input placeholder="dd/mm/aaaa" autoComplete="off" className="font-mono" {...control("fecha")} />
         </Field>
-        <Field id="lugar" label="Lugar" required error={errores.lugar} className="md:col-span-2">
-          <Input autoComplete="off" {...control("lugar")} />
+        <Field id="hora" label="Hora" required error={errores.hora}>
+          <Input placeholder="hh:mm" autoComplete="off" className="font-mono" {...control("hora")} />
         </Field>
-        <Field id="descripcion" label="Descripción" required error={errores.descripcion} className="md:col-span-2">
-          <Textarea placeholder="Describí lo ocurrido" {...control("descripcion")} />
+        <Field id="direccion" label="Domicilio del hecho" required error={errores.direccion} className="md:col-span-2">
+          <Input autoComplete="off" {...control("direccion")} />
         </Field>
+        <Field id="numeroParte" label="N.º de parte" required error={errores.numeroParte}>
+          <Input autoComplete="off" className="font-mono" {...control("numeroParte")} />
+        </Field>
+        <Field id="motivo" label="Motivo" required error={errores.motivo}>
+          <Input autoComplete="off" {...control("motivo")} />
+        </Field>
+        <Field id="localidad" label="Localidad" required error={errores.localidad}>
+          <Input autoComplete="off" {...control("localidad")} />
+        </Field>
+        <Field id="partido" label="Partido" required error={errores.partido}>
+          <Input autoComplete="off" {...control("partido")} />
+        </Field>
+        <Field id="perdidas" label="Pérdidas" required error={errores.perdidas} className="md:col-span-2">
+          <Textarea placeholder="Describí los daños" {...control("perdidas")} />
+        </Field>
+        {valores.tipo === "vehicular" && (
+          <Field id="patenteVehiculo" label="Patente del vehículo" required error={errores.patenteVehiculo}>
+            <Input autoComplete="off" className="font-mono uppercase" {...control("patenteVehiculo")} />
+          </Field>
+        )}
+      </Seccion>
+
+      <Seccion titulo="Constancia">
+        <Field id="destino" label="Destino" required error={errores.destino}>
+          <Select {...control("destino")}>
+            <option value="" disabled>
+              Seleccioná un destino
+            </option>
+            {Object.entries(DESTINOS_CONSTANCIA).map(([valor, label]) => (
+              <option key={valor} value={valor}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field id="razonSocial" label="Para ser presentado" required error={errores.razonSocial}>
+          <Input autoComplete="off" {...control("razonSocial")} />
+        </Field>
+        {valores.destino === "seguro" && (
+          <Field id="numeroPoliza" label="N.º de póliza" required error={errores.numeroPoliza}>
+            <Input autoComplete="off" className="font-mono" {...control("numeroPoliza")} />
+          </Field>
+        )}
       </Seccion>
 
       {mostrarEstadoInicial && (

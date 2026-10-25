@@ -15,7 +15,7 @@ http.interceptors.response.use(undefined, async (error: unknown) => {
   const esLogin = axios.isAxiosError(error) && error.config?.url === "/auth/login";
   if (axios.isAxiosError(error) && error.response?.status === 401 && !esLogin) {
     borrarToken();
-    await router.navigate({ to: "/login", search: { sesionVencida: true } });
+    await router.navigate({ to: "/login", state: { sesionVencida: true } });
   }
   return Promise.reject(error);
 });

@@ -14,6 +14,7 @@ import SolicitudesPage from "@/features/constancias/pages/SolicitudesPage";
 import NuevaSolicitudPage from "@/features/constancias/pages/NuevaSolicitudPage";
 import SolicitudDetallePage from "@/features/constancias/pages/SolicitudDetallePage";
 import EditarSolicitudPage from "@/features/constancias/pages/EditarSolicitudPage";
+import GenerarConstanciaPage from "@/features/constancias/pages/GenerarConstanciaPage";
 import Guia from "@/guia";
 import AppLayout from "./AppLayout";
 
@@ -29,19 +30,22 @@ const indexRoute = createRoute({
     if (estado === "activa") {
       throw redirect({ to: "/dashboard" });
     }
-    throw redirect({ to: "/login", search: { sesionVencida: estado === "vencida" } });
+    // El aviso viaja en el estado del historial, no en la URL.
+    throw redirect({ to: "/login", state: { sesionVencida: estado === "vencida" } });
   },
 });
 
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
-  validateSearch: (search: Record<string, unknown>): { sesionVencida: boolean } => ({
-    sesionVencida: search.sesionVencida === true || search.sesionVencida === "true",
-  }),
-  beforeLoad: () => {
+  validateSearch: (search: Record<string, unknown>) => search,
+  beforeLoad: ({ search }) => {
     if (leerSesion().estado === "activa") {
       throw redirect({ to: "/dashboard" });
+    }
+    // Limpia enlaces viejos con ?sesionVencida=...: ese dato no va en la URL.
+    if ("sesionVencida" in search) {
+      throw redirect({ to: "/login", replace: true });
     }
   },
   component: LoginRoutePage,
@@ -54,7 +58,7 @@ const appRoute = createRoute({
   beforeLoad: () => {
     const { estado } = leerSesion();
     if (estado !== "activa") {
-      throw redirect({ to: "/login", search: { sesionVencida: estado === "vencida" } });
+      throw redirect({ to: "/login", state: { sesionVencida: estado === "vencida" } });
     }
   },
   component: AppLayout,
@@ -91,6 +95,12 @@ const editarSolicitudRoute = createRoute({
   component: EditarSolicitudPage,
 });
 
+const generarConstanciaRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/solicitudes/$id/generar",
+  component: GenerarConstanciaPage,
+});
+
 const guiaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/guia",
@@ -106,6 +116,7 @@ const routeTree = rootRoute.addChildren([
     nuevaSolicitudRoute,
     solicitudRoute,
     editarSolicitudRoute,
+    generarConstanciaRoute,
   ]),
   guiaRoute,
 ]);
@@ -122,10 +133,11 @@ declare module "@tanstack/react-router" {
   }
 }
 
-// Avisos que viajan en el historial (no en la URL) después de guardar.
+// Avisos que viajan en el historial (no en la URL).
 declare module "@tanstack/history" {
   interface HistoryState {
     creada?: string; // número de la solicitud recién creada
     editada?: boolean;
+    sesionVencida?: boolean; // la sesión expiró y hay que avisarlo en el login
   }
 }

@@ -37,6 +37,7 @@ async function renderApp(path: string) {
   const router = crearRouter(createMemoryHistory({ initialEntries: [path] }));
   render(<RouterProvider router={router} />);
   await screen.findByRole("heading", { name: "Ingresar a CentralBV" });
+  return router;
 }
 
 async function completarCredenciales() {
@@ -54,13 +55,23 @@ describe("LoginPage", () => {
   it("redirige al login y avisa cuando la sesión está vencida", async () => {
     guardarToken(tokenVencido());
 
-    await renderApp("/dashboard");
+    const router = await renderApp("/dashboard");
 
     expect(screen.getByRole("heading", { name: "Ingresar a CentralBV" })).toBeInTheDocument();
     expect(
       screen.getByText("Tu sesión expiró por seguridad. Volvé a ingresar."),
     ).toBeInTheDocument();
     expect(obtenerToken()).toBeNull();
+    expect(router.state.location.searchStr).toBe("");
+  });
+
+  it("no muestra el aviso ni deja el parámetro cuando la sesión no venció", async () => {
+    const router = await renderApp("/login?sesionVencida=false");
+
+    expect(
+      screen.queryByText("Tu sesión expiró por seguridad. Volvé a ingresar."),
+    ).not.toBeInTheDocument();
+    expect(router.state.location.searchStr).toBe("");
   });
 
   it("ingresa al dashboard cuando las credenciales son válidas", async () => {

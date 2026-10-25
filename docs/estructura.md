@@ -58,10 +58,11 @@ centralBV/
 │  │  │  │  ├─ busqueda.ts          Parámetros de la URL del listado
 │  │  │  │  ├─ formato.ts           Etiquetas, DNI y fechas
 │  │  │  │  └─ validacion.ts        Validación del formulario de solicitud
-│  │  │  ├─ components/             EstadoBadge, SolicitudForm, CancelarSolicitudDialog
+│  │  │  ├─ components/             EstadoBadge, SolicitudForm, CancelarSolicitudDialog,
+│  │  │  │                          HojaConstancia, HojaEscalada, ImprimirConstanciaDialog
 │  │  │  ├─ hooks/
 │  │  │  │  └─ useConsulta.ts       Carga asíncrona con estados cargando/error/listo
-│  │  │  └─ pages/                  Listado, alta, detalle y edición
+│  │  │  └─ pages/                  Listado, alta, detalle, edición y generación
 │  │  │
 │  │  └─ dashboard/
 │  │     └─ pages/
@@ -162,6 +163,7 @@ pages / components  →  hooks  →  domain
 | `/solicitudes/nueva` | Requiere sesión activa | `NuevaSolicitudPage` |
 | `/solicitudes/$id` | Requiere sesión activa | `SolicitudDetallePage` |
 | `/solicitudes/$id/editar` | Requiere sesión activa | `EditarSolicitudPage` |
+| `/solicitudes/$id/generar` | Requiere sesión activa | `GenerarConstanciaPage` (formulario o visor del PDF) |
 | `/guia` | Pública (demo de diseño y prototipo) | `Guia` |
 
 Las rutas con sesión cuelgan de una ruta sin path (`id: "app"`) que tiene el guard y el `AppLayout`; por eso sus ids son `/app/...` (por ejemplo, `getRouteApi("/app/solicitudes")`).
@@ -171,7 +173,7 @@ Flujo de autenticación:
 1. `main.tsx` monta `RouterProvider` con el router de `app/router.tsx` e importa `app/configurarHttp.ts`.
 2. `beforeLoad` llama a `leerSesion()`, que lee el token de `localStorage` y revisa su `exp`.
 3. `LoginPage` valida credenciales, llama a `iniciarSesion()` en `authApi`, guarda el `access_token` y navega a `/dashboard`.
-4. Cada pedido lleva `Authorization: Bearer <token>`. Si el back responde 401, se borra el token y se vuelve a `/login?sesionVencida=true`.
+4. Cada pedido lleva `Authorization: Bearer <token>`. Si el back responde 401, se borra el token y se vuelve a `/login` con el aviso de sesión vencida (viaja en el estado del historial, no en la URL).
 5. El botón "Cerrar sesión" del riel borra el token.
 
 El token se guarda en `localStorage` con la clave `centralbv.token`. La API se configura con `VITE_API_URL` y por defecto apunta a `http://localhost:3000`.
@@ -230,7 +232,7 @@ Según [flujos.md](./flujos.md) y [roles.md](./roles.md), faltan estas features.
 src/features/
 ├─ auth/            Login y sesión (existe)
 ├─ dashboard/       Pantalla inicial (existe)
-├─ constancias/     Solicitudes (existe); falta generación de PDF, entrega y pago (M4 2/2)
+├─ constancias/     Solicitudes (existe); falta entrega y pago (M4 2/2)
 ├─ vehiculos/       Lista, detalle y ABM de móviles
 ├─ inspeccion/      Checklist, pausa/retoma y envío
 └─ usuarios/        Gestión de usuarios, roles y permisos
