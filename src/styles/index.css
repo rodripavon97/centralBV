@@ -2,3 +2,51 @@
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/jetbrains-mono";
 @import "./tokens.css";
+
+/* Hoja de la constancia: tamaño A4 real, con la tipografía del PDF oficial.
+   La vista previa la escala por CSS; al imprimir se usa sin transformar. */
+.hoja-a4 {
+  width: 210mm;
+  height: 297mm;
+  flex: none;
+  background: #ffffff;
+  color: #000000;
+  font-family: Helvetica, Arial, sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Contenedor que se manda a imprimir (portal fuera de #root). */
+#constancia-impresion {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  body > #root {
+    display: none !important;
+  }
+
+  #constancia-impresion {
+    display: block !important;
+  }
+
+  #constancia-impresion .hoja-a4 {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  #constancia-impresion .hoja-a4:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}

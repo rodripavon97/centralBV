@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+
+type LockerSide = 'left' | 'right';
+type Locker = { id: string; name: string; status: string };
 
 export default function App() {
     // Estado para el tipo de vehículo: 'truck' o 'suv'
@@ -23,7 +26,7 @@ export default function App() {
     ]);
 
     // Funciones para agregar/quitar/modificar buches
-    const addLocker = (side) => {
+    const addLocker = (side: LockerSide) => {
         if (side === 'left') {
             const nextId = `BL-${leftLockers.length + 1}`;
             setLeftLockers([...leftLockers, { id: nextId, name: `COMPARTIMENTO ${nextId}`, status: 'ok' }]);
@@ -33,7 +36,7 @@ export default function App() {
         }
     };
 
-    const removeLocker = (side, index) => {
+    const removeLocker = (side: LockerSide, index: number) => {
         if (side === 'left') {
             setLeftLockers(leftLockers.filter((_, i) => i !== index));
         } else {
@@ -41,7 +44,7 @@ export default function App() {
         }
     };
 
-    const updateLocker = (side, index, field, value) => {
+    const updateLocker = (side: LockerSide, index: number, field: keyof Locker, value: string) => {
         if (side === 'left') {
             const updated = [...leftLockers];
             updated[index][field] = value;
@@ -53,7 +56,7 @@ export default function App() {
         }
     };
 
-    const getStatusColor = (status) => {
+    const getStatusColor = (status: string) => {
         switch (status) {
             case 'ok': return 'bg-[var(--color-state-ok)] shadow-[0_0_8px_var(--color-state-ok)]';
             case 'warn': return 'bg-[var(--color-state-warn)] shadow-[0_0_8px_var(--color-state-warn)]';
