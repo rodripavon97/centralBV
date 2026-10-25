@@ -173,7 +173,7 @@ Flujo de autenticación:
 1. `main.tsx` monta `RouterProvider` con el router de `app/router.tsx` e importa `app/configurarHttp.ts`.
 2. `beforeLoad` llama a `leerSesion()`, que lee el token de `localStorage` y revisa su `exp`.
 3. `LoginPage` valida credenciales, llama a `iniciarSesion()` en `authApi`, guarda el `access_token` y navega a `/dashboard`.
-4. Cada pedido lleva `Authorization: Bearer <token>`. Si el back responde 401, se borra el token y se vuelve a `/login?sesionVencida=true`.
+4. Cada pedido lleva `Authorization: Bearer <token>`. Si el back responde 401, se borra el token y se vuelve a `/login` con el aviso de sesión vencida (viaja en el estado del historial, no en la URL).
 5. El botón "Cerrar sesión" del riel borra el token.
 
 El token se guarda en `localStorage` con la clave `centralbv.token`. La API se configura con `VITE_API_URL` y por defecto apunta a `http://localhost:3000`.

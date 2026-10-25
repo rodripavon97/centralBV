@@ -18,7 +18,7 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const salir = async () => {
     borrarToken();
-    await navigate({ to: "/login", search: { sesionVencida: false } });
+    await navigate({ to: "/login" });
   };
 
   return (
