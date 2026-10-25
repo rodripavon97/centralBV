@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from "react";
-import { getRouteApi, useLocation } from "@tanstack/react-router";
+import { getRouteApi, useLocation, useNavigate } from "@tanstack/react-router";
 import { Ban, CircleCheck, CircleX, FileText, Lock, Pencil, RotateCcw, SearchX } from "lucide-react";
 import type { Solicitud } from "@/types/dominio";
 import { Button, ButtonLink } from "@/components/centralbv/Button";
 import { Alert } from "@/components/centralbv/Alert";
 import { EmptyState } from "@/components/centralbv/EmptyState";
 import { cancelarSolicitud, obtenerSolicitud } from "../api/solicitudesApi";
-import { TIPOS_SINIESTRO, formatearDni, formatearFechaHora } from "../domain/formato";
+import { DESTINOS_CONSTANCIA, TIPOS_SINIESTRO, formatearDni, formatearFecha, formatearHora } from "../domain/formato";
 import { useConsulta } from "../hooks/useConsulta";
 import CancelarSolicitudDialog from "../components/CancelarSolicitudDialog";
 import EstadoBadge from "../components/EstadoBadge";
@@ -69,9 +69,11 @@ function Detalle({
   editada?: boolean;
   onCancelada: (s: Solicitud) => void;
 }) {
+  const navigate = useNavigate();
   const [cancelando, setCancelando] = useState(false);
   const pendiente = s.estado === "pendiente";
-  const { damnificado: d, siniestro: sn } = s;
+  const conConstancia = s.estado === "constancia_generada" || s.estado === "firmada" || s.estado === "entregada";
+  const { damnificado: d, siniestro: sn, constancia: c } = s;
 
   // US13: solo se edita o cancela una solicitud pendiente.
   const bloqueo: Partial<Record<Solicitud["estado"], string>> = {
@@ -107,11 +109,19 @@ function Detalle({
             Cancelar solicitud
           </Button>
           {pendiente && (
-            // Generar constancia es US10 (M4 · Solicitudes 2/2): todavía no está implementado.
-            <Button variant="primary" disabled title="Disponible con US10 · Generar constancia">
+            <Button
+              variant="primary"
+              onClick={() => void navigate({ to: "/solicitudes/$id/generar", params: { id: s.id } })}
+            >
               <FileText size={16} strokeWidth={1.5} aria-hidden />
               Generar constancia
             </Button>
+          )}
+          {conConstancia && (
+            <ButtonLink to="/solicitudes/$id/generar" params={{ id: s.id }} variant="primary">
+              <FileText size={16} strokeWidth={1.5} aria-hidden />
+              Ver constancia
+            </ButtonLink>
           )}
         </div>
       </header>
@@ -138,21 +148,42 @@ function Detalle({
         <Lectura
           titulo="Damnificado"
           filas={[
-            ["Nombre y apellido", `${d.nombre} ${d.apellido}`],
+            ["Nombre y apellido", d.nombre],
             ["DNI", formatearDni(d.dni), true],
             ["Teléfono", d.telefono, true],
-            ["Domicilio", d.domicilio],
           ]}
         />
         <Lectura
           titulo="Siniestro"
           filas={[
-            ["Tipo de siniestro", TIPOS_SINIESTRO[sn.tipo]],
-            ["Fecha y hora", formatearFechaHora(sn.fechaHora), true],
-            ["Lugar", sn.lugar],
-            ["Descripción", sn.descripcion],
+            ["Tipo", TIPOS_SINIESTRO[sn.tipo]],
+            ["Fecha y hora", `${formatearFecha(sn.fecha)} ${formatearHora(sn.hora)}`, true],
+            ["Domicilio del hecho", sn.direccion],
+            ["Localidad", sn.localidad],
+            ["Partido", sn.partido],
+            ["N.º de parte", sn.numeroParte, true],
+            ["Motivo", sn.motivo],
+            ["Pérdidas", sn.perdidas],
+            ...(sn.patenteVehiculo ? ([["Patente", sn.patenteVehiculo, true]] as [string, string, boolean][]) : []),
           ]}
         />
+        <Lectura
+          titulo="Constancia"
+          filas={[
+            ["Destino", DESTINOS_CONSTANCIA[c.destino]],
+            ["Para ser presentado", c.razonSocial],
+            ["N.º de póliza", c.numeroPoliza, true],
+          ]}
+        />
+        {(s.observaciones || s.retiradoEn) && (
+          <Lectura
+            titulo="Cierre"
+            filas={[
+              ["Observaciones", s.observaciones],
+              ["Retirada", s.retiradoEn ? `${s.retiradoPorNombre ?? ""} · DNI ${formatearDni(s.retiradoPorDni ?? "")}` : undefined],
+            ]}
+          />
+        )}
       </div>
 
       <CancelarSolicitudDialog

@@ -112,7 +112,18 @@ Formulario desktop-first, con ancho máximo de 720 px y secciones condicionales:
 
 - **Tipo de siniestro:** vehículo o vivienda. Los campos cambian (una vivienda no tiene patente).
 - **Destino:** seguro (requiere póliza) o acción social (viviendas).
-- Al completar el formulario se genera un **PDF A4 con membrete** a partir de una plantilla Handlebars. La plantilla queda fuera del sistema de diseño de la app y comparte solo las fuentes y el rojo de marca.
+- Al completar el formulario se genera un **PDF A4 con membrete** a partir de una plantilla oficial. La plantilla queda fuera del sistema de diseño de la app y comparte solo las fuentes y el rojo de marca.
+
+### Generar la constancia (US10)
+
+Desde el detalle de una solicitud pendiente, **Generar constancia** abre `/solicitudes/$id/generar`:
+
+- La plantilla aparece con los datos de la solicitud ya volcados. Se puede agregar un texto adicional (observaciones) antes de guardar.
+- Al guardar se llama a `PATCH /solicitudes/:id/generar-constancia`: la solicitud pasa a REALIZADA y el back devuelve el PDF de 3 hojas.
+- La misma pantalla queda como visor: riel con las 3 hojas, **Descargar PDF** e **Imprimir**.
+- **Descargar PDF** usa `GET /solicitudes/:id/pdf`, disponible solo en REALIZADA, FIRMADA o RETIRADA. El back también lo valida.
+- **Imprimir** abre un diálogo con las 3 hojas en A4 (la hoja 1 queda en el cuartel; las hojas 2 y 3 se entregan).
+- Las hojas 1, 2 y 3 comparten membrete y datos. Solo la hoja 1 lleva los espacios de RETIRO, DNI, FIRMA y FECHA.
 
 Pendiente: definir el listado exacto de campos por tipo y por destino.
 

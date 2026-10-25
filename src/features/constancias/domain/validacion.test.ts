@@ -2,59 +2,97 @@ import { describe, expect, it } from "vitest";
 import { VALORES_VACIOS, datosDesdeValores, validarSolicitud, type ValoresSolicitud } from "./validacion";
 
 const validos: ValoresSolicitud = {
-  nombre: "Lucía",
-  apellido: "Fernández",
+  nombre: "Lucía Fernández",
   dni: "30.112.456",
   telefono: "11 5555-0142",
-  domicilio: "",
-  tipo: "incendio_vivienda",
-  fechaHora: "11/10/2026 18:20",
-  lugar: "Calle San Martín 450",
-  descripcion: "Incendio en cocina",
+  tipo: "vivienda",
+  fecha: "11/10/2026",
+  hora: "18:20",
+  direccion: "Calle San Martín 450",
+  numeroParte: "P-2026-0142",
+  motivo: "Solicitud de constancia para el seguro",
+  localidad: "Morón",
+  partido: "Morón",
+  perdidas: "Incendio en cocina",
+  patenteVehiculo: "",
+  destino: "accion_social",
+  razonSocial: "Acción Social Morón",
+  numeroPoliza: "",
 };
 
 describe("validarSolicitud (US08)", () => {
-  it("acepta una solicitud completa con domicilio vacío", () => {
+  it("acepta una solicitud completa sin patente ni póliza", () => {
     expect(validarSolicitud(validos)).toEqual({});
   });
 
   it("marca todos los obligatorios cuando el formulario está vacío", () => {
     expect(Object.keys(validarSolicitud(VALORES_VACIOS)).sort()).toEqual(
-      ["apellido", "descripcion", "dni", "fechaHora", "lugar", "nombre", "tipo"].sort(),
+      [
+        "direccion",
+        "dni",
+        "destino",
+        "fecha",
+        "hora",
+        "localidad",
+        "motivo",
+        "nombre",
+        "numeroParte",
+        "partido",
+        "perdidas",
+        "razonSocial",
+        "tipo",
+      ].sort(),
     );
   });
 
-  it("rechaza DNI, teléfono y fecha con formato inválido", () => {
-    const errores = validarSolicitud({ ...validos, dni: "30.112", telefono: "abc", fechaHora: "2026-10-11" });
+  it("rechaza DNI, teléfono, fecha y hora con formato inválido", () => {
+    const errores = validarSolicitud({ ...validos, dni: "30.112", telefono: "abc", fecha: "2026-10-11", hora: "25:00" });
     expect(errores).toMatchObject({
       dni: "Ingresá un DNI válido (7 u 8 dígitos)",
       telefono: "Ingresá un teléfono válido",
-      fechaHora: "Usá el formato dd/mm/aaaa hh:mm",
+      fecha: "Usá el formato dd/mm/aaaa",
+      hora: "Usá el formato hh:mm",
     });
   });
 
   it("rechaza una fecha futura", () => {
-    expect(validarSolicitud({ ...validos, fechaHora: "01/01/2999 10:00" }).fechaHora).toBe(
-      "La fecha no puede ser posterior a hoy",
-    );
+    expect(validarSolicitud({ ...validos, fecha: "01/01/2999" }).fecha).toBe("La fecha no puede ser posterior a hoy");
+  });
+
+  it("exige patente para un vehículo y póliza para un seguro", () => {
+    expect(
+      validarSolicitud({ ...validos, tipo: "vehicular", patenteVehiculo: "", destino: "seguro", numeroPoliza: "" }),
+    ).toMatchObject({
+      patenteVehiculo: "La patente es obligatoria para un vehículo",
+      numeroPoliza: "El número de póliza es obligatorio",
+    });
   });
 });
 
 describe("datosDesdeValores", () => {
-  it("deja el DNI solo con dígitos, la fecha en ISO y los opcionales vacíos sin valor", () => {
+  it("deja el DNI solo con dígitos, la fecha y la hora normalizadas y los opcionales vacíos sin valor", () => {
     expect(datosDesdeValores(validos)).toEqual({
       damnificado: {
-        nombre: "Lucía",
-        apellido: "Fernández",
+        nombre: "Lucía Fernández",
         dni: "30112456",
         telefono: "11 5555-0142",
-        domicilio: undefined,
       },
       siniestro: {
-        tipo: "incendio_vivienda",
-        fechaHora: "2026-10-11T18:20",
-        lugar: "Calle San Martín 450",
-        descripcion: "Incendio en cocina",
+        tipo: "vivienda",
+        fecha: "2026-10-11",
+        hora: "18:20",
+        direccion: "Calle San Martín 450",
+        numeroParte: "P-2026-0142",
+        motivo: "Solicitud de constancia para el seguro",
+        localidad: "Morón",
+        partido: "Morón",
+        perdidas: "Incendio en cocina",
+        patenteVehiculo: undefined,
+      },
+      constancia: {
+        destino: "accion_social",
+        razonSocial: "Acción Social Morón",
+        numeroPoliza: undefined,
       },
     });
   });

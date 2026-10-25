@@ -14,6 +14,7 @@ import SolicitudesPage from "@/features/constancias/pages/SolicitudesPage";
 import NuevaSolicitudPage from "@/features/constancias/pages/NuevaSolicitudPage";
 import SolicitudDetallePage from "@/features/constancias/pages/SolicitudDetallePage";
 import EditarSolicitudPage from "@/features/constancias/pages/EditarSolicitudPage";
+import GenerarConstanciaPage from "@/features/constancias/pages/GenerarConstanciaPage";
 import Guia from "@/guia";
 import AppLayout from "./AppLayout";
 
@@ -91,6 +92,12 @@ const editarSolicitudRoute = createRoute({
   component: EditarSolicitudPage,
 });
 
+const generarConstanciaRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/solicitudes/$id/generar",
+  component: GenerarConstanciaPage,
+});
+
 const guiaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/guia",
@@ -106,6 +113,7 @@ const routeTree = rootRoute.addChildren([
     nuevaSolicitudRoute,
     solicitudRoute,
     editarSolicitudRoute,
+    generarConstanciaRoute,
   ]),
   guiaRoute,
 ]);

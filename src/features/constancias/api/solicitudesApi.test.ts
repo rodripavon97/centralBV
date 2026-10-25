@@ -1,7 +1,14 @@
 import { AxiosError, AxiosHeaders } from "axios";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErrorApi, http } from "@/lib/http";
-import { crearSolicitud, listarSolicitudes, obtenerSolicitud, type SolicitudApi } from "./solicitudesApi";
+import {
+  crearSolicitud,
+  descargarConstanciaPdf,
+  generarConstancia,
+  listarSolicitudes,
+  obtenerSolicitud,
+  type SolicitudApi,
+} from "./solicitudesApi";
 
 const solicitudApi: SolicitudApi = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -9,9 +16,27 @@ const solicitudApi: SolicitudApi = {
   estado: "REALIZADA",
   // 02:30 UTC del 12/10 es el 11/10 a la noche en Argentina.
   fechaAlta: "2026-10-12T02:30:00+00:00",
-  damnificado: { nombre: "Martín", apellido: "Gómez", dni: "28774310", telefono: null, domicilio: null },
-  siniestro: { tipo: "VEHICULAR", fechaHora: "2026-10-11T18:20", lugar: "Ruta 2", descripcion: "Incendio de motor" },
+  damnificado: { nombre: "Martín Gómez", dni: "28774310", telefono: null },
+  siniestro: {
+    tipo: "VEHICULAR",
+    fecha: "2026-10-11",
+    hora: "18:20:00",
+    direccion: "Ruta 2",
+    numeroParte: "P-2026-0142",
+    motivo: "Incendio de motor",
+    localidad: "Morón",
+    partido: "Morón",
+    perdidas: "Motor y cableado",
+    patenteVehiculo: "AB123CD",
+  },
+  constancia: { destino: "SEGURO", razonSocial: "La Caja Seguros", numeroPoliza: "POL-998877" },
+  abono: null,
+  observaciones: null,
   motivoCancelacion: null,
+  canceladoEn: null,
+  retiradoEn: null,
+  retiradoPorNombre: null,
+  retiradoPorDni: null,
 };
 
 function errorHttp(status: number, message: unknown) {
@@ -40,22 +65,51 @@ describe("solicitudesApi", () => {
     expect(pagina.items[0]).toMatchObject({
       estado: "constancia_generada",
       fechaAlta: "2026-10-11",
-      damnificado: { telefono: undefined, domicilio: undefined },
-      siniestro: { tipo: "incendio_vehicular" },
+      damnificado: { telefono: undefined },
+      siniestro: {
+        tipo: "vehicular",
+        hora: "18:20",
+        patenteVehiculo: "AB123CD",
+      },
+      constancia: { destino: "seguro", numeroPoliza: "POL-998877" },
     });
   });
 
-  it("manda el tipo de siniestro como lo espera el back al crear", async () => {
+  it("manda el tipo de siniestro y el destino como los espera el back al crear", async () => {
     const post = vi.spyOn(http, "post").mockResolvedValue({ data: { ...solicitudApi, estado: "PENDIENTE" } });
 
     await crearSolicitud({
-      damnificado: { nombre: "Rosa", apellido: "Quiroga", dni: "31456789" },
-      siniestro: { tipo: "accidente_transito", fechaHora: "2026-10-20T21:05", lugar: "Ruta 2", descripcion: "Choque" },
+      damnificado: { nombre: "Rosa Quiroga", dni: "31456789" },
+      siniestro: {
+        tipo: "vehicular",
+        fecha: "2026-10-20",
+        hora: "21:05",
+        direccion: "Ruta 2",
+        numeroParte: "P-9",
+        motivo: "Choque",
+        localidad: "Morón",
+        partido: "Morón",
+        perdidas: "Guardabarros",
+        patenteVehiculo: "AC123BD",
+      },
+      constancia: { destino: "seguro", razonSocial: "La Caja", numeroPoliza: "POL-1" },
     });
 
     expect(post.mock.calls[0][1]).toEqual({
-      damnificado: { nombre: "Rosa", apellido: "Quiroga", dni: "31456789" },
-      siniestro: { tipo: "ACCIDENTE_TRANSITO", fechaHora: "2026-10-20T21:05", lugar: "Ruta 2", descripcion: "Choque" },
+      damnificado: { nombre: "Rosa Quiroga", dni: "31456789", telefono: null },
+      siniestro: {
+        tipo: "VEHICULAR",
+        fecha: "2026-10-20",
+        hora: "21:05",
+        direccion: "Ruta 2",
+        numeroParte: "P-9",
+        motivo: "Choque",
+        localidad: "Morón",
+        partido: "Morón",
+        perdidas: "Guardabarros",
+        patenteVehiculo: "AC123BD",
+      },
+      constancia: { destino: "SEGURO", razonSocial: "La Caja", numeroPoliza: "POL-1" },
     });
   });
 
@@ -70,11 +124,54 @@ describe("solicitudesApi", () => {
     );
 
     const error = await crearSolicitud({
-      damnificado: { nombre: "Rosa", apellido: "Quiroga", dni: "1" },
-      siniestro: { tipo: "incendio_vivienda", fechaHora: "2026-10-20T21:05", lugar: "x", descripcion: "y" },
+      damnificado: { nombre: "Rosa Quiroga", dni: "1" },
+      siniestro: {
+        tipo: "vivienda",
+        fecha: "2026-10-20",
+        hora: "21:05",
+        direccion: "x",
+        numeroParte: "y",
+        motivo: "z",
+        localidad: "l",
+        partido: "p",
+        perdidas: "q",
+      },
+      constancia: { destino: "accion_social", razonSocial: "Acción Social" },
     }).catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(ErrorApi);
     expect(error).toMatchObject({ status: 400, message: "El DNI debe tener 7 u 8 dígitos, sin puntos. La fecha no existe" });
+  });
+
+  it("genera la constancia y devuelve el PDF con el nombre que manda el back", async () => {
+    const blob = new Blob(["pdf"], { type: "application/pdf" });
+    const patch = vi.spyOn(http, "patch").mockResolvedValue({
+      data: blob,
+      headers: new AxiosHeaders({ "content-disposition": 'inline; filename="Constancia_Rosa_Quiroga.pdf"' }),
+    });
+
+    await expect(generarConstancia("abc", "  Texto adicional  ")).resolves.toEqual({
+      blob,
+      filename: "Constancia_Rosa_Quiroga.pdf",
+    });
+    expect(patch).toHaveBeenCalledWith(
+      "/solicitudes/abc/generar-constancia",
+      { observaciones: "Texto adicional" },
+      { responseType: "blob" },
+    );
+  });
+
+  it("descarga el PDF de una constancia ya generada", async () => {
+    const blob = new Blob(["pdf"], { type: "application/pdf" });
+    const get = vi.spyOn(http, "get").mockResolvedValue({
+      data: blob,
+      headers: new AxiosHeaders({ "content-disposition": 'attachment; filename="constancia.pdf"' }),
+    });
+
+    await expect(descargarConstanciaPdf("abc")).resolves.toEqual({ blob, filename: "constancia.pdf" });
+    expect(get).toHaveBeenCalledWith("/solicitudes/abc/pdf", {
+      responseType: "blob",
+      headers: { Accept: "application/pdf" },
+    });
   });
 });

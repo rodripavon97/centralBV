@@ -260,9 +260,7 @@ function Tabla({
                   </Link>
                 </td>
                 <td className={`${td} text-code tabular-nums text-text-secondary`}>{formatearFecha(s.fechaAlta)}</td>
-                <td className={td}>
-                  {s.damnificado.nombre} {s.damnificado.apellido}
-                </td>
+                <td className={td}>{s.damnificado.nombre}</td>
                 <td className={`${td} text-code tabular-nums`}>{formatearDni(s.damnificado.dni)}</td>
                 <td className={`${td} text-text-secondary`}>{TIPOS_SINIESTRO[s.siniestro.tipo]}</td>
                 <td className={td}>
