@@ -1,4 +1,5 @@
-import { FileText, Flame, LayoutGrid, LogOut, Truck, Users, type LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
+import { FileText, LayoutGrid, LogOut, Truck, Users, type LucideIcon } from "lucide-react";
 import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { focus } from "@/components/centralbv/estilos";
 import { borrarToken } from "@/features/auth/session";
@@ -14,7 +15,8 @@ const destinos: { label: string; icon: LucideIcon; to?: "/dashboard" | "/solicit
 
 const item = `flex size-10 items-center justify-center rounded-lg ${focus}`;
 
-export default function AppLayout() {
+/** Riel + contenido. Sin children muestra la ruta hija (Outlet); la 404 le pasa su contenido. */
+export default function AppLayout({ children }: { children?: ReactNode }) {
   const navigate = useNavigate();
   const salir = async () => {
     borrarToken();
@@ -27,10 +29,8 @@ export default function AppLayout() {
         aria-label="Navegación principal"
         className="sticky top-0 flex h-screen w-(--nav-rail) shrink-0 flex-col items-center gap-6 border-r border-border-subtle py-4"
       >
-        <span className="flex size-10 items-center justify-center rounded-lg bg-accent-fill text-white" title="CentralBV">
-          <Flame size={20} strokeWidth={1.5} aria-hidden />
-          <span className="sr-only">CentralBV</span>
-        </span>
+        {/* Isotipo oficial (Brand/Isotipo en Figma). */}
+        <img src="/isotipo-centralBV.svg" alt="CentralBV" title="CentralBV" width={263} height={326} className="h-10 w-auto" />
         <ul className="flex flex-col gap-2">
           {destinos.map(({ label, icon: Icon, to }) => (
             <li key={label}>
@@ -69,7 +69,7 @@ export default function AppLayout() {
         </button>
       </nav>
       <main className="flex min-w-0 flex-1 flex-col px-(--layout-margin) py-8">
-        <Outlet />
+        {children ?? <Outlet />}
       </main>
     </div>
   );

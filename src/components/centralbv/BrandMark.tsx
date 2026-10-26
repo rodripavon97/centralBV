@@ -1,12 +1,15 @@
-import { Flame } from "lucide-react";
-
-export function BrandMark() {
+/** Logotipo oficial (isotipo + marca), Brand/Logotipo en Figma. "lg" es el de las pantallas sueltas, como la 404. */
+export function BrandMark({ size = "sm" }: { size?: "sm" | "lg" }) {
+  // El span evita que un padre flex en columna estire la imagen a todo el ancho.
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="flex size-7 items-center justify-center rounded-md bg-accent-fill">
-        <Flame size={16} className="text-white" fill="currentColor" strokeWidth={0} aria-hidden />
-      </span>
-      <span className="text-sm font-semibold text-text-primary">CentralBV</span>
-    </div>
+    <span className="inline-flex shrink-0">
+      <img
+        src="/logotipo-centralBV.svg"
+        alt="CentralBV"
+        width={925}
+        height={326}
+        className={`w-auto ${size === "lg" ? "h-11" : "h-8"}`}
+      />
+    </span>
   );
 }

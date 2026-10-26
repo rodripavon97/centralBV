@@ -9,6 +9,7 @@ import type {
 } from "@/types/dominio";
 import { ErrorApi, aErrorApi, http } from "@/lib/http";
 import type { DatosSolicitud } from "../domain/validacion";
+import type { DatosPago } from "../domain/validacionPago";
 
 /* Llamadas a /solicitudes de centralBV_back (US08 a US13).
    Acá se traducen los nombres del back (PENDIENTE, VIVIENDA, fechas ISO)
@@ -268,6 +269,20 @@ export async function actualizarSolicitud(id: string, datos: DatosSolicitud): Pr
 export async function cancelarSolicitud(id: string, motivo: string): Promise<Solicitud> {
   return desdeApi(
     await datosDe(http.patch<SolicitudApi>(`/solicitudes/${encodeURIComponent(id)}/cancelar`, { motivo: motivo.trim() })),
+  );
+}
+
+/** US14: registra o modifica el pago del arancel. "pendiente" lo deja sin pago cargado. */
+export async function registrarPago(id: string, datos: DatosPago): Promise<Solicitud> {
+  return desdeApi(
+    await datosDe(
+      http.patch<SolicitudApi>(`/solicitudes/${encodeURIComponent(id)}/abono`, {
+        estado: PAGO_A_API[datos.estado],
+        monto: datos.monto,
+        metodoPago: datos.metodoPago && METODO_A_API[datos.metodoPago],
+        motivoExento: datos.motivoExento,
+      }),
+    ),
   );
 }
 

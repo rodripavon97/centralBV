@@ -7,6 +7,7 @@ import {
   generarConstancia,
   listarSolicitudes,
   obtenerSolicitud,
+  registrarPago,
   type SolicitudApi,
 } from "./solicitudesApi";
 
@@ -110,6 +111,38 @@ describe("solicitudesApi", () => {
         patenteVehiculo: "AC123BD",
       },
       constancia: { destino: "SEGURO", razonSocial: "La Caja", numeroPoliza: "POL-1" },
+    });
+  });
+
+  it("registra el pago en /abono con los valores del back y devuelve la solicitud actualizada", async () => {
+    const patch = vi.spyOn(http, "patch").mockResolvedValue({
+      data: {
+        ...solicitudApi,
+        abono: { estado: "ABONADO", monto: 12000, metodoPago: "TRANSFERENCIA", fechaPago: "2026-10-12T10:00:00Z", motivoExento: null },
+      },
+    });
+
+    const s = await registrarPago(solicitudApi.id, { estado: "abonado", monto: 12000, metodoPago: "transferencia" });
+
+    expect(patch).toHaveBeenCalledWith(`/solicitudes/${solicitudApi.id}/abono`, {
+      estado: "ABONADO",
+      monto: 12000,
+      metodoPago: "TRANSFERENCIA",
+      motivoExento: undefined,
+    });
+    expect(s.abono).toMatchObject({ estado: "abonado", monto: 12000, metodoPago: "transferencia" });
+  });
+
+  it("registra una exención con su motivo y sin monto ni método", async () => {
+    const patch = vi.spyOn(http, "patch").mockResolvedValue({ data: solicitudApi });
+
+    await registrarPago(solicitudApi.id, { estado: "exento", motivoExento: "Acción social" });
+
+    expect(patch.mock.calls[0][1]).toEqual({
+      estado: "EXENTO",
+      monto: undefined,
+      metodoPago: undefined,
+      motivoExento: "Acción social",
     });
   });
 

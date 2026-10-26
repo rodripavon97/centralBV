@@ -1,15 +1,19 @@
-import { useState, type ReactNode } from "react";
-import { getRouteApi, useLocation, useNavigate } from "@tanstack/react-router";
-import { Ban, CircleCheck, CircleX, FileText, Lock, Pencil, RotateCcw, SearchX } from "lucide-react";
+import { useId, useState, type ReactNode } from "react";
+import { Link, getRouteApi, useLocation, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, Ban, CircleAlert, CircleCheck, CircleX, FileText, Lock, Pencil, RotateCcw, SearchX } from "lucide-react";
 import type { Solicitud } from "@/types/dominio";
 import { Button, ButtonLink } from "@/components/centralbv/Button";
 import { Alert } from "@/components/centralbv/Alert";
 import { EmptyState } from "@/components/centralbv/EmptyState";
-import { cancelarSolicitud, obtenerSolicitud } from "../api/solicitudesApi";
-import { DESTINOS_CONSTANCIA, TIPOS_SINIESTRO, formatearDni, formatearFecha, formatearHora } from "../domain/formato";
+import { focus } from "@/components/centralbv/estilos";
+import { cancelarSolicitud, obtenerSolicitud, registrarPago } from "../api/solicitudesApi";
+import { DESTINOS_CONSTANCIA, METODOS_PAGO, TIPOS_SINIESTRO, formatearDni, formatearFecha, formatearHora, formatearMonto } from "../domain/formato";
+import { entregaBloqueada, estadoPagoDe, puedeRegistrarPago } from "../domain/pago";
 import { useConsulta } from "../hooks/useConsulta";
 import CancelarSolicitudDialog from "../components/CancelarSolicitudDialog";
 import EstadoBadge from "../components/EstadoBadge";
+import PagoBadge from "../components/PagoBadge";
+import RegistrarPagoDialog from "../components/RegistrarPagoDialog";
 
 const ruta = getRouteApi("/app/solicitudes/$id");
 
@@ -55,7 +59,7 @@ export default function SolicitudDetallePage() {
     <Detalle
       solicitud={solicitud}
       editada={editada && !actualizada}
-      onCancelada={setActualizada}
+      onActualizada={setActualizada}
     />
   );
 }
@@ -63,14 +67,16 @@ export default function SolicitudDetallePage() {
 function Detalle({
   solicitud: s,
   editada,
-  onCancelada,
+  onActualizada,
 }: {
   solicitud: Solicitud;
   editada?: boolean;
-  onCancelada: (s: Solicitud) => void;
+  onActualizada: (s: Solicitud) => void;
 }) {
   const navigate = useNavigate();
   const [cancelando, setCancelando] = useState(false);
+  const [registrandoPago, setRegistrandoPago] = useState(false);
+  const [pagoGuardado, setPagoGuardado] = useState(false);
   const pendiente = s.estado === "pendiente";
   const conConstancia = s.estado === "constancia_generada" || s.estado === "firmada" || s.estado === "entregada";
   const { damnificado: d, siniestro: sn, constancia: c } = s;
@@ -84,15 +90,27 @@ function Detalle({
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-readout">{s.numero}</h1>
-            <EstadoBadge estado={s.estado} />
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-3">
+          <Link
+            to="/solicitudes"
+            className={`inline-flex w-fit items-center gap-2 rounded-sm text-sm text-accent-text hover:underline ${focus}`}
+          >
+            <ArrowLeft size={16} strokeWidth={1.5} aria-hidden />
+            Solicitudes
+          </Link>
+          <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-xl font-semibold">
+                Solicitud N.º <span className="font-mono">{s.numero}</span>
+              </h1>
+              <EstadoBadge estado={s.estado} />
+            </div>
+            <p className="text-sm text-text-muted">Alta {formatearFecha(s.fechaAlta)}</p>
           </div>
-          <p className="text-sm text-text-muted">Solicitud de constancia</p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        {/* Mobile: acciones apiladas a todo el ancho, la principal primero. */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3 [&>*]:w-full sm:[&>*]:w-auto">
           {pendiente ? (
             <ButtonLink to="/solicitudes/$id/editar" params={{ id: s.id }}>
               <Pencil size={16} strokeWidth={1.5} aria-hidden />
@@ -111,6 +129,7 @@ function Detalle({
           {pendiente && (
             <Button
               variant="primary"
+              className="order-first sm:order-none"
               onClick={() => void navigate({ to: "/solicitudes/$id/generar", params: { id: s.id } })}
             >
               <FileText size={16} strokeWidth={1.5} aria-hidden />
@@ -118,7 +137,12 @@ function Detalle({
             </Button>
           )}
           {conConstancia && (
-            <ButtonLink to="/solicitudes/$id/generar" params={{ id: s.id }} variant="primary">
+            <ButtonLink
+              to="/solicitudes/$id/generar"
+              params={{ id: s.id }}
+              variant="primary"
+              className="order-first sm:order-none"
+            >
               <FileText size={16} strokeWidth={1.5} aria-hidden />
               Ver constancia
             </ButtonLink>
@@ -129,6 +153,16 @@ function Detalle({
       {editada && (
         <Alert tone="ok" icon={CircleCheck} role="status">
           Cambios guardados.
+        </Alert>
+      )}
+      {pagoGuardado && (
+        <Alert tone="ok" icon={CircleCheck} role="status">
+          Pago guardado.
+        </Alert>
+      )}
+      {entregaBloqueada(s) && (
+        <Alert tone="warn" icon={CircleAlert}>
+          Entrega bloqueada: el arancel figura como pendiente. Registrá el pago para poder entregar.
         </Alert>
       )}
       {s.estado === "cancelada" ? (
@@ -144,46 +178,79 @@ function Detalle({
         )
       )}
 
-      <div className="flex max-w-(--content-form-max) flex-col gap-4">
-        <Lectura
-          titulo="Damnificado"
-          filas={[
-            ["Nombre y apellido", d.nombre],
-            ["DNI", formatearDni(d.dni), true],
-            ["Teléfono", d.telefono, true],
-          ]}
-        />
-        <Lectura
-          titulo="Siniestro"
-          filas={[
-            ["Tipo", TIPOS_SINIESTRO[sn.tipo]],
-            ["Fecha y hora", `${formatearFecha(sn.fecha)} ${formatearHora(sn.hora)}`, true],
-            ["Domicilio del hecho", sn.direccion],
-            ["Localidad", sn.localidad],
-            ["Partido", sn.partido],
-            ["N.º de parte", sn.numeroParte, true],
-            ["Motivo", sn.motivo],
-            ["Pérdidas", sn.perdidas],
-            ...(sn.patenteVehiculo ? ([["Patente", sn.patenteVehiculo, true]] as [string, string, boolean][]) : []),
-          ]}
-        />
-        <Lectura
-          titulo="Constancia"
-          filas={[
-            ["Destino", DESTINOS_CONSTANCIA[c.destino]],
-            ["Para ser presentado", c.razonSocial],
-            ["N.º de póliza", c.numeroPoliza, true],
-          ]}
-        />
-        {(s.observaciones || s.retiradoEn) && (
-          <Lectura
-            titulo="Cierre"
-            filas={[
-              ["Observaciones", s.observaciones],
-              ["Retirada", s.retiradoEn ? `${s.retiradoPorNombre ?? ""} · DNI ${formatearDni(s.retiradoPorDni ?? "")}` : undefined],
-            ]}
-          />
-        )}
+      {/* Figma S5: datos a la izquierda, constancia y arancel a la derecha.
+          Debajo de lg queda una sola columna en el mismo orden. */}
+      <div className="grid items-start gap-(--layout-gutter) lg:grid-cols-[minmax(0,1fr)_22.5rem]">
+        <div className="flex min-w-0 flex-col gap-(--layout-gutter)">
+          <Tarjeta titulo="Datos del solicitante">
+            <Datos
+              campos={[
+                { etiqueta: "Nombre y apellido", valor: d.nombre, ancho: true },
+                { etiqueta: "DNI", valor: formatearDni(d.dni), numerico: true },
+                { etiqueta: "Teléfono", valor: d.telefono, numerico: true },
+              ]}
+            />
+          </Tarjeta>
+          <Tarjeta titulo="Datos del siniestro">
+            <Datos
+              campos={[
+                { etiqueta: "Tipo de siniestro", valor: TIPOS_SINIESTRO[sn.tipo] },
+                { etiqueta: "Parte N.º", valor: sn.numeroParte, numerico: true },
+                { etiqueta: "Fecha", valor: formatearFecha(sn.fecha), numerico: true },
+                { etiqueta: "Hora", valor: `${formatearHora(sn.hora)} HS`, numerico: true },
+                { etiqueta: "Domicilio del hecho", valor: sn.direccion, ancho: true },
+                { etiqueta: "Localidad", valor: sn.localidad },
+                { etiqueta: "Partido", valor: sn.partido },
+                { etiqueta: "Motivo", valor: sn.motivo, ancho: true },
+                { etiqueta: "Pérdidas", valor: sn.perdidas, ancho: !sn.patenteVehiculo },
+                ...(sn.patenteVehiculo ? [{ etiqueta: "Patente", valor: sn.patenteVehiculo, numerico: true }] : []),
+              ]}
+            />
+          </Tarjeta>
+          {(s.observaciones || s.retiradoEn) && (
+            <Tarjeta titulo="Cierre">
+              <Datos
+                campos={[
+                  { etiqueta: "Observaciones", valor: s.observaciones, ancho: true },
+                  ...(s.retiradoEn
+                    ? [
+                        {
+                          etiqueta: "Retirada por",
+                          valor: `${s.retiradoPorNombre ?? ""} · DNI ${formatearDni(s.retiradoPorDni ?? "")}`,
+                          ancho: true,
+                        },
+                      ]
+                    : []),
+                ]}
+              />
+            </Tarjeta>
+          )}
+        </div>
+
+        <aside className="flex min-w-0 flex-col gap-(--layout-gutter)" aria-label="Constancia y arancel">
+          <Tarjeta titulo="Constancia">
+            <p className="text-sm text-text-secondary">{RESUMEN_CONSTANCIA[s.estado]}</p>
+            <Filas
+              filas={[
+                { etiqueta: "Destino", valor: DESTINOS_CONSTANCIA[c.destino] },
+                { etiqueta: "Para ser presentado ante", valor: c.razonSocial },
+                ...(c.destino === "seguro" || c.numeroPoliza
+                  ? [{ etiqueta: "N.º de póliza", valor: c.numeroPoliza, numerico: true }]
+                  : []),
+              ]}
+            />
+          </Tarjeta>
+          {s.estado !== "cancelada" && (
+            <Arancel
+              solicitud={s}
+              puedeRegistrar={puedeRegistrarPago(s)}
+              onRegistrar={() => {
+                setPagoGuardado(false);
+                setRegistrandoPago(true);
+              }}
+            />
+          )}
+        </aside>
       </div>
 
       <CancelarSolicitudDialog
@@ -191,30 +258,120 @@ function Detalle({
         abierto={cancelando}
         onCerrar={() => setCancelando(false)}
         onConfirmar={async (motivo) => {
-          onCancelada(await cancelarSolicitud(s.id, motivo));
+          onActualizada(await cancelarSolicitud(s.id, motivo));
           setCancelando(false);
+        }}
+      />
+      <RegistrarPagoDialog
+        solicitud={s}
+        abierto={registrandoPago}
+        onCerrar={() => setRegistrandoPago(false)}
+        onGuardar={async (datos) => {
+          onActualizada(await registrarPago(s.id, datos));
+          setRegistrandoPago(false);
+          setPagoGuardado(true);
         }}
       />
     </div>
   );
 }
 
-function Lectura({ titulo, filas }: { titulo: string; filas: [string, ReactNode | undefined, mono?: boolean][] }) {
+const RESUMEN_CONSTANCIA: Record<Solicitud["estado"], string> = {
+  pendiente: "Todavía no se generó la constancia.",
+  constancia_generada: "Constancia generada, falta la firma.",
+  firmada: "Constancia firmada, lista para entregar.",
+  entregada: "Constancia entregada.",
+  cancelada: "La solicitud fue cancelada.",
+};
+
+/** US14: estado del arancel con su monto y método; se modifica salvo si está cancelada o entregada. */
+function Arancel({
+  solicitud: s,
+  puedeRegistrar,
+  onRegistrar,
+}: {
+  solicitud: Solicitud;
+  puedeRegistrar: boolean;
+  onRegistrar: () => void;
+}) {
+  const estado = estadoPagoDe(s);
+  const a = s.abono;
+  const registrado = estado !== "pendiente";
   return (
-    <section aria-label={titulo} className="rounded-lg border border-border-subtle bg-bg-surface">
-      <dl>
-        {filas.map(([etiqueta, valor, mono], i) => (
-          <div
-            key={etiqueta}
-            className={`flex items-start justify-between gap-6 px-4 py-3 ${i > 0 ? "border-t border-border-subtle" : ""}`}
-          >
-            <dt className="text-eyebrow shrink-0 pt-0.5">{etiqueta}</dt>
-            <dd className={`text-right text-sm ${mono ? "text-code tabular-nums" : ""} ${valor ? "" : "text-text-muted"}`}>
-              {valor || "—"}
-            </dd>
-          </div>
-        ))}
-      </dl>
+    <Tarjeta titulo="Arancel">
+      <Filas
+        filas={[
+          { etiqueta: "Estado de pago", valor: <PagoBadge estado={estado} /> },
+          ...(estado === "exento"
+            ? [{ etiqueta: "Motivo de la exención", valor: a?.motivoExento }]
+            : [
+                { etiqueta: "Monto", valor: a?.monto != null ? formatearMonto(a.monto) : undefined, numerico: true },
+                { etiqueta: "Método de pago", valor: a?.metodoPago ? METODOS_PAGO[a.metodoPago] : undefined },
+              ]),
+        ]}
+      />
+      {puedeRegistrar && (
+        <Button onClick={onRegistrar} className="w-full">
+          {registrado ? "Modificar pago" : "Registrar pago"}
+        </Button>
+      )}
+    </Tarjeta>
+  );
+}
+
+function Tarjeta({ titulo, children }: { titulo: string; children: ReactNode }) {
+  const id = useId();
+  return (
+    <section
+      aria-labelledby={id}
+      className="flex flex-col gap-4 rounded-lg border border-border-subtle bg-bg-surface p-4 md:p-6"
+    >
+      <h2 id={id} className="text-base font-semibold">
+        {titulo}
+      </h2>
+      {children}
     </section>
+  );
+}
+
+interface Campo {
+  etiqueta: string;
+  valor?: ReactNode;
+  /** Ocupa las dos columnas (textos largos). */
+  ancho?: boolean;
+  numerico?: boolean;
+}
+
+/** Datos en grilla: una columna en mobile, dos desde sm (como en Figma). */
+function Datos({ campos }: { campos: Campo[] }) {
+  return (
+    <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+      {campos.map(({ etiqueta, valor, ancho, numerico }) => (
+        <div key={etiqueta} className={`flex min-w-0 flex-col gap-1 ${ancho ? "sm:col-span-2" : ""}`}>
+          <dt className="text-xs text-text-muted">{etiqueta}</dt>
+          <dd className={`break-words text-sm ${numerico ? "tabular-nums" : ""} ${valor ? "text-text-primary" : "text-text-muted"}`}>
+            {valor || "—"}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** Filas etiqueta / valor de las tarjetas laterales. */
+function Filas({ filas }: { filas: Omit<Campo, "ancho">[] }) {
+  return (
+    <dl className="flex flex-col gap-3">
+      {filas.map(({ etiqueta, valor, numerico }) => (
+        <div key={etiqueta} className="flex min-h-6 items-center justify-between gap-4">
+          <dt className="min-w-0 text-sm text-text-secondary">{etiqueta}</dt>
+          <dd
+            className={`max-w-[60%] shrink-0 break-words text-right text-sm ${numerico ? "tabular-nums" : ""} ${valor ? "text-text-primary" : "text-text-muted"}`}
+          >
+            {valor || "—"}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }
