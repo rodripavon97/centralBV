@@ -15,11 +15,14 @@ import NuevaSolicitudPage from "@/features/constancias/pages/NuevaSolicitudPage"
 import SolicitudDetallePage from "@/features/constancias/pages/SolicitudDetallePage";
 import EditarSolicitudPage from "@/features/constancias/pages/EditarSolicitudPage";
 import GenerarConstanciaPage from "@/features/constancias/pages/GenerarConstanciaPage";
+import { NoEncontradaPage } from "@/features/sistema/pages/NoEncontradaPage";
 import Guia from "@/guia";
 import AppLayout from "./AppLayout";
 
 const rootRoute = createRootRoute({
   component: Outlet,
+  // US34: cualquier dirección que no existe.
+  notFoundComponent: NoEncontradaPage,
 });
 
 const indexRoute = createRoute({
