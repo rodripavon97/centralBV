@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { CircleCheck, Info, TriangleAlert, type LucideIcon } from "lucide-react";
 
-type Tone = "danger" | "info" | "ok" | "neutral";
+type Tone = "danger" | "warn" | "info" | "ok" | "neutral";
 
 interface AlertProps {
   tone: Tone;
@@ -15,6 +15,10 @@ interface AlertProps {
 const styles: Record<Tone, { className: string; Icon: LucideIcon }> = {
   danger: {
     className: "border-state-danger bg-state-danger-bg text-state-danger",
+    Icon: TriangleAlert,
+  },
+  warn: {
+    className: "border-state-warn bg-state-warn-bg text-state-warn",
     Icon: TriangleAlert,
   },
   info: {

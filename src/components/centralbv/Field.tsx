@@ -1,5 +1,5 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
-import { ChevronDown, CircleX } from "lucide-react";
+import { ChevronDown, CircleAlert } from "lucide-react";
 import { focus } from "./estilos";
 
 const control = `w-full rounded-md border border-border-input bg-bg-base px-3 text-base text-text-primary placeholder:text-text-muted md:text-sm aria-invalid:border-state-danger ${focus}`;
@@ -23,12 +23,12 @@ export function Field({
     <div className={`flex flex-col gap-1.5 ${className}`}>
       <label htmlFor={id} className="text-sm text-text-secondary">
         {label}
-        {required && <span aria-hidden> *</span>}
+        {required && <span aria-hidden className="text-accent-text"> *</span>}
       </label>
       {children}
       {error && (
         <p id={`${id}-error`} className="flex items-center gap-1 text-xs text-state-danger">
-          <CircleX size={14} strokeWidth={1.5} aria-hidden />
+          <CircleAlert size={14} strokeWidth={1.5} className="shrink-0" aria-hidden />
           {error}
         </p>
       )}

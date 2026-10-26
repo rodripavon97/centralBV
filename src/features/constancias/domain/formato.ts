@@ -1,4 +1,4 @@
-import type { DestinoConstancia, EstadoSolicitud, TipoSiniestro } from "@/types/dominio";
+import type { DestinoConstancia, EstadoPago, EstadoSolicitud, MetodoPago, TipoSiniestro } from "@/types/dominio";
 
 export const TIPOS_SINIESTRO: Record<TipoSiniestro, string> = {
   vivienda: "Vivienda",
@@ -16,6 +16,19 @@ export const ESTADOS_SOLICITUD: Record<EstadoSolicitud, string> = {
   firmada: "Firmada",
   entregada: "Entregada",
   cancelada: "Cancelada",
+};
+
+export const ESTADOS_PAGO: Record<EstadoPago, string> = {
+  pendiente: "Pendiente",
+  abonado: "Abonado",
+  exento: "Exento",
+};
+
+export const METODOS_PAGO: Record<MetodoPago, string> = {
+  efectivo: "Efectivo",
+  transferencia: "Transferencia",
+  debito: "Débito",
+  credito: "Crédito",
 };
 
 const MESES = [
@@ -38,6 +51,18 @@ const dos = (n: number) => String(n).padStart(2, "0");
 /** "30112456" → "30.112.456" */
 export function formatearDni(dni: string) {
   return dni.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+/** 12000 → "12.000", 1500.5 → "1.500,50" (sin el signo, para los campos de importe). */
+export function formatearImporte(monto: number) {
+  const [entero, decimales] = monto.toFixed(2).split(".");
+  const miles = entero.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${miles}${decimales === "00" ? "" : `,${decimales}`}`;
+}
+
+/** 12000 → "$ 12.000", 1500.5 → "$ 1.500,50" */
+export function formatearMonto(monto: number) {
+  return `$ ${formatearImporte(monto)}`;
 }
 
 /** "2026-10-11" → "11/10/2026" */
