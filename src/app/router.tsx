@@ -16,6 +16,8 @@ import SolicitudDetallePage from "@/features/constancias/pages/SolicitudDetalleP
 import EditarSolicitudPage from "@/features/constancias/pages/EditarSolicitudPage";
 import GenerarConstanciaPage from "@/features/constancias/pages/GenerarConstanciaPage";
 import { NoEncontradaPage } from "@/features/sistema/pages/NoEncontradaPage";
+import NuevoUsuarioPage from "@/features/usuarios/pages/NuevoUsuarioPage";
+import UsuariosPage from "@/features/usuarios/pages/UsuariosPage";
 import Guia from "@/guia";
 import AppLayout from "./AppLayout";
 
@@ -104,6 +106,29 @@ const generarConstanciaRoute = createRoute({
   component: GenerarConstanciaPage,
 });
 
+/* Usuarios y roles: solo el administrador general. El back también lo valida
+   (RolesGuard); acá se evita que un usuario con otro rol llegue a la pantalla. */
+const exigirAdmin = () => {
+  const { roles } = leerSesion();
+  if (roles.length > 0 && !roles.includes("ADMIN")) {
+    throw redirect({ to: "/dashboard" });
+  }
+};
+
+const usuariosRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/usuarios",
+  beforeLoad: exigirAdmin,
+  component: UsuariosPage,
+});
+
+const nuevoUsuarioRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/usuarios/nuevo",
+  beforeLoad: exigirAdmin,
+  component: NuevoUsuarioPage,
+});
+
 const guiaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/guia",
@@ -120,6 +145,8 @@ const routeTree = rootRoute.addChildren([
     solicitudRoute,
     editarSolicitudRoute,
     generarConstanciaRoute,
+    usuariosRoute,
+    nuevoUsuarioRoute,
   ]),
   guiaRoute,
 ]);
@@ -142,5 +169,6 @@ declare module "@tanstack/history" {
     creada?: string; // número de la solicitud recién creada
     editada?: boolean;
     sesionVencida?: boolean; // la sesión expiró y hay que avisarlo en el login
+    usuarioCreado?: string; // correo del usuario recién creado
   }
 }

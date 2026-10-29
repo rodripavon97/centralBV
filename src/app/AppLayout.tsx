@@ -2,15 +2,20 @@ import type { ReactNode } from "react";
 import { FileText, LayoutGrid, LogOut, Truck, Users, type LucideIcon } from "lucide-react";
 import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { focus } from "@/components/centralbv/estilos";
-import { borrarToken } from "@/features/auth/session";
+import { borrarToken, leerSesion } from "@/features/auth/session";
 
-/* Riel lateral. Por ahora existen el panel y Solicitudes; el resto de los
+/* Riel lateral. Por ahora existen el panel, Solicitudes y Usuarios; el resto de los
    destinos se habilita a medida que se implementan. */
-const destinos: { label: string; icon: LucideIcon; to?: "/dashboard" | "/solicitudes" }[] = [
+const destinos: {
+  label: string;
+  icon: LucideIcon;
+  to?: "/dashboard" | "/solicitudes" | "/usuarios";
+  soloAdmin?: boolean;
+}[] = [
   { label: "Panel", icon: LayoutGrid, to: "/dashboard" },
   { label: "Solicitudes", icon: FileText, to: "/solicitudes" },
   { label: "Móviles", icon: Truck },
-  { label: "Usuarios", icon: Users },
+  { label: "Usuarios", icon: Users, to: "/usuarios", soloAdmin: true },
 ];
 
 const item = `flex size-10 items-center justify-center rounded-lg ${focus}`;
@@ -18,6 +23,11 @@ const item = `flex size-10 items-center justify-center rounded-lg ${focus}`;
 /** Riel + contenido. Sin children muestra la ruta hija (Outlet); la 404 le pasa su contenido. */
 export default function AppLayout({ children }: { children?: ReactNode }) {
   const navigate = useNavigate();
+  const { roles } = leerSesion();
+  // Los tokens viejos no traen roles: en ese caso no se oculta el destino y el
+  // back sigue siendo el que valida el permiso.
+  const esAdmin = roles.length === 0 || roles.includes("ADMIN");
+  const visibles = destinos.filter((destino) => !destino.soloAdmin || esAdmin);
   const salir = async () => {
     borrarToken();
     await navigate({ to: "/login" });
@@ -32,7 +42,7 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
         {/* Isotipo oficial (Brand/Isotipo en Figma). */}
         <img src="/isotipo-centralBV.svg" alt="CentralBV" title="CentralBV" width={263} height={326} className="h-10 w-auto" />
         <ul className="flex flex-col gap-2">
-          {destinos.map(({ label, icon: Icon, to }) => (
+          {visibles.map(({ label, icon: Icon, to }) => (
             <li key={label}>
               {to ? (
                 <Link
