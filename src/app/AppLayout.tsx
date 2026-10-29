@@ -4,12 +4,12 @@ import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { focus } from "@/components/centralbv/estilos";
 import { borrarToken } from "@/features/auth/session";
 
-/* Riel lateral. Por ahora existen el panel y Solicitudes; el resto de los
+/* Riel lateral. Existen el panel, Solicitudes y Móviles; el resto de los
    destinos se habilita a medida que se implementan. */
-const destinos: { label: string; icon: LucideIcon; to?: "/dashboard" | "/solicitudes" }[] = [
+const destinos: { label: string; icon: LucideIcon; to?: "/dashboard" | "/solicitudes" | "/moviles" }[] = [
   { label: "Panel", icon: LayoutGrid, to: "/dashboard" },
   { label: "Solicitudes", icon: FileText, to: "/solicitudes" },
-  { label: "Móviles", icon: Truck },
+  { label: "Móviles", icon: Truck, to: "/moviles" },
   { label: "Usuarios", icon: Users },
 ];
 

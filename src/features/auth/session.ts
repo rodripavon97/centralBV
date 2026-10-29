@@ -1,9 +1,12 @@
+import type { Rol } from "@/types/dominio";
+
 const TOKEN_KEY = "centralbv.token";
 
 export type EstadoSesion = "activa" | "vencida" | "ausente";
 
 interface PayloadToken {
   exp?: number;
+  roles?: unknown;
 }
 
 function decodificarPayload(token: string): PayloadToken | null {
@@ -48,4 +51,17 @@ export function obtenerToken(): string | null {
 
 export function borrarToken(): void {
   window.localStorage.removeItem(TOKEN_KEY);
+}
+
+/** Roles del usuario según el token (los nombres del back: "AUTOMOTORES", "ADMIN"…). */
+export function leerRoles(): string[] {
+  const token = obtenerToken();
+  const roles = token ? decodificarPayload(token)?.roles : undefined;
+  return Array.isArray(roles) ? roles.filter((r): r is string => typeof r === "string") : [];
+}
+
+/** true si el usuario tiene alguno de los roles. ADMIN tiene control total, como en el back. */
+export function tieneRol(...roles: Rol[]): boolean {
+  const propios = leerRoles();
+  return propios.includes("ADMIN") || roles.some((r) => propios.includes(r));
 }
