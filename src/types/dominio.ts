@@ -1,4 +1,5 @@
-export type Rol = "admin_general" | "administrativo" | "inspector" | "admin_moviles";
+/** Roles del back (vienen en el token). ADMIN tiene control total. */
+export type Rol = "ADMIN" | "ADMINISTRATIVO" | "AUTOMOTORES" | "COMUN";
 
 export type EstadoVehiculo = "operativo" | "observaciones" | "fuera_de_servicio" | "mantenimiento";
 
