@@ -131,6 +131,32 @@ Pendiente: definir el listado exacto de campos por tipo y por destino.
 
 Gestión de usuarios, asignación de roles y permisos por el administrador general. Ver [roles.md](./roles.md).
 
-## 6. Estados que tiene que tener toda pantalla
+## 6. Recuperación de contraseña (US03)
+
+```
+Login → Recuperá tu contraseña → Revisá tu correo → Creá tu nueva contraseña
+                                                         ├── Contraseña restablecida
+                                                         └── El enlace ya no es válido
+```
+
+Pantallas públicas, con la misma estructura de dos columnas del login:
+
+1. **Recuperá tu contraseña.** Correo electrónico y **Enviar enlace**. Estados: formato inválido y enviando.
+2. **Revisá tu correo.** Confirmación genérica: "Si tu cuenta existe, te enviamos un enlace…". Acciones: **Reenviar enlace** y volver al login.
+3. **Creá tu nueva contraseña.** Nueva contraseña y confirmación, con **Ver contraseña** y el texto de requisitos. Estados: no coinciden, guardando y contraseña igual a la anterior.
+4. **Contraseña restablecida.** "Ya podés ingresar con tu nueva contraseña. El enlace que usaste ya no funciona." Acción: **Ir a iniciar sesión**.
+5. **El enlace ya no es válido.** Se muestra si falta el token, venció o ya se usó. Acción: **Pedir un nuevo enlace**.
+
+Reglas:
+
+- El enlace es único, vale **2 horas** y se puede usar una sola vez.
+- La pantalla de confirmación no revela si el correo existe (evita enumeración de cuentas).
+- Los requisitos de la nueva contraseña son los de US01: 8 o más caracteres, una mayúscula, una minúscula y un número.
+- Si la nueva contraseña es igual a la anterior: "La contraseña nueva no puede ser igual a la anterior".
+- Después de restablecer, el token se inhabilita. El front lo borra de la URL y de `sessionStorage`, y recuerda el token usado para mostrar el estado inválido si se reabre el enlace.
+- Endpoints del back: `POST /auth/forgot-password` y `POST /auth/reset-password`.
+- El `redirectTo` que arma el back en el correo tiene que apuntar al front (`/update-password` o `/restablecer-contrasena`), no al puerto del back.
+
+## 7. Estados que tiene que tener toda pantalla
 
 Normal, cargando, vacío y error. En la lista de vehículos, además, "sin resultados de búsqueda".

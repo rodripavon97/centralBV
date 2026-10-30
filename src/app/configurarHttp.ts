@@ -12,8 +12,11 @@ http.interceptors.request.use((config) => {
 });
 
 http.interceptors.response.use(undefined, async (error: unknown) => {
-  const esLogin = axios.isAxiosError(error) && error.config?.url === "/auth/login";
-  if (axios.isAxiosError(error) && error.response?.status === 401 && !esLogin) {
+  // Los endpoints de /auth no cierran la sesión: el login y la recuperación
+  // manejan sus propios errores (por ejemplo, un enlace vencido).
+  const esEndpointAuth =
+    axios.isAxiosError(error) && (error.config?.url?.startsWith("/auth/") ?? false);
+  if (axios.isAxiosError(error) && error.response?.status === 401 && !esEndpointAuth) {
     borrarToken();
     await router.navigate({ to: "/login", state: { sesionVencida: true } });
   }

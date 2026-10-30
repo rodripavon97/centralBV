@@ -6,7 +6,12 @@ import {
   redirect,
   type RouterHistory,
 } from "@tanstack/react-router";
+import { ContrasenaRestablecidaPage } from "@/features/auth/pages/ContrasenaRestablecidaPage";
 import { LoginRoutePage } from "@/features/auth/pages/LoginRoutePage";
+import { RecuperarContrasenaPage } from "@/features/auth/pages/RecuperarContrasenaPage";
+import { RecuperarEnviadoPage } from "@/features/auth/pages/RecuperarEnviadoPage";
+import { RestablecerContrasenaPage } from "@/features/auth/pages/RestablecerContrasenaPage";
+import { recuperacionCompletada } from "@/features/auth/recuperacion";
 import { leerSesion, tieneRol } from "@/features/auth/session";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { validarBusquedaSolicitudes } from "@/features/constancias/domain/busqueda";
@@ -57,6 +62,53 @@ const loginRoute = createRoute({
     }
   },
   component: LoginRoutePage,
+});
+
+/* US03: recuperación de contraseña. Son públicas; si ya hay sesión activa,
+   las pantallas de solicitud vuelven al dashboard (el enlace del correo, no:
+   se puede abrir aunque haya una sesión abierta en el navegador). */
+const sinSesionActiva = () => {
+  if (leerSesion().estado === "activa") {
+    throw redirect({ to: "/dashboard" });
+  }
+};
+
+const recuperarContrasenaRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/recuperar-contrasena",
+  beforeLoad: sinSesionActiva,
+  component: RecuperarContrasenaPage,
+});
+
+const recuperarEnviadoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/recuperar-contrasena/enviado",
+  beforeLoad: sinSesionActiva,
+  component: RecuperarEnviadoPage,
+});
+
+const restablecerContrasenaRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/restablecer-contrasena",
+  component: RestablecerContrasenaPage,
+});
+
+// Alias para el redirectTo que arma el back en el correo.
+const actualizarContrasenaRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/update-password",
+  component: RestablecerContrasenaPage,
+});
+
+const contrasenaRestablecidaRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/restablecer-contrasena/lista",
+  beforeLoad: () => {
+    if (!recuperacionCompletada()) {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: ContrasenaRestablecidaPage,
 });
 
 // Rutas con sesión: comparten el guard y el riel de navegación.
@@ -160,6 +212,11 @@ const guiaRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
+  recuperarContrasenaRoute,
+  recuperarEnviadoRoute,
+  restablecerContrasenaRoute,
+  actualizarContrasenaRoute,
+  contrasenaRestablecidaRoute,
   appRoute.addChildren([
     dashboardRoute,
     solicitudesRoute,

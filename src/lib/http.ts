@@ -22,6 +22,7 @@ export class ErrorApi extends Error {
 
 /** Convierte un error de axios (cuerpo de Nest: { message: string | string[] }) en ErrorApi. */
 export function aErrorApi(error: unknown): ErrorApi {
+  if (error instanceof ErrorApi) return error;
   if (!axios.isAxiosError(error)) {
     return new ErrorApi(0, error instanceof Error ? error.message : "Ocurrió un error inesperado.");
   }
