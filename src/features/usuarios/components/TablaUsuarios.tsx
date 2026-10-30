@@ -1,5 +1,6 @@
 import type { MouseEvent } from "react";
 import { CircleCheck } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { focus } from "@/components/centralbv/estilos";
 import { etiquetaRol, type Usuario } from "../domain/usuario";
 
@@ -48,7 +49,9 @@ export default function TablaUsuarios({
               return (
                 <tr key={usuario.id} className="border-t border-border-subtle">
                   <td className={`${td} font-medium`}>
-                    {usuario.nombre} {usuario.apellido}
+                    <Link to="/usuarios/$id" params={{ id: usuario.id }} className={`hover:underline ${focus}`}>
+                      {usuario.nombre} {usuario.apellido}
+                    </Link>
                   </td>
                   <td className={`${td} text-code text-text-secondary`}>{usuario.email}</td>
                   <td className={`${td} text-text-secondary`}>{etiquetaRol(usuario.roles)}</td>

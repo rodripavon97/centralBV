@@ -29,6 +29,7 @@ export default function NuevoUsuarioPage() {
 
       <UsuarioForm
         onGuardar={async (datos) => {
+          if (!("password" in datos)) return;
           await crearUsuario(datos);
           await navigate({ to: "/usuarios", state: { usuarioCreado: datos.email } });
         }}
