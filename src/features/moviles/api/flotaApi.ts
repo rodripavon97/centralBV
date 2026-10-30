@@ -78,14 +78,28 @@ export interface PaginaMoviles {
   total: number;
 }
 
-/** Móviles activos (sin los dados de baja), ordenados por denominación. */
-export async function listarMoviles(): Promise<PaginaMoviles> {
+/** Móviles activos (sin los dados de baja). `busqueda` filtra por número interno o
+    patente (US06): el back normaliza la patente y la denominación ("m1" encuentra M-1). */
+export async function listarMoviles(filtro: { busqueda?: string } = {}): Promise<PaginaMoviles> {
+  const busqueda = filtro.busqueda?.trim();
   const r = await datosDe(
     http.get<{ items: MovilApi[]; total: number }>("/flota/vehiculos", {
-      params: { ordenPor: "denominacion", orden: "asc", pagina: 1, porPagina: POR_PAGINA_MOVILES },
+      params: {
+        ...(busqueda && { busqueda }),
+        ordenPor: "denominacion",
+        orden: "asc",
+        pagina: 1,
+        porPagina: POR_PAGINA_MOVILES,
+      },
     }),
   );
   return { items: r.items.map(movilDesdeApi), total: r.total };
+}
+
+/** Un móvil por id, también si está dado de baja (ficha, US06).
+    404 si no existe y 400 si el id no es válido: la ficha muestra "Móvil no encontrado". */
+export async function obtenerMovil(id: string): Promise<MovilFlota> {
+  return movilDesdeApi(await datosDe(http.get<MovilApi>(`/flota/vehiculos/${encodeURIComponent(id)}`)));
 }
 
 /** Alta de un móvil (queda Operativo). La patente y la denominación las normaliza el back.

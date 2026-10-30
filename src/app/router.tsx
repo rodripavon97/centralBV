@@ -16,6 +16,7 @@ import { leerSesion, tieneRol } from "@/features/auth/session";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { validarBusquedaSolicitudes } from "@/features/constancias/domain/busqueda";
 import { validarBusquedaFlota } from "@/features/moviles/domain/flota";
+import { validarBusquedaFicha, validarBusquedaMoviles, type BusquedaMoviles } from "@/features/moviles/domain/busquedaMoviles";
 import SolicitudesPage from "@/features/constancias/pages/SolicitudesPage";
 import NuevaSolicitudPage from "@/features/constancias/pages/NuevaSolicitudPage";
 import SolicitudDetallePage from "@/features/constancias/pages/SolicitudDetallePage";
@@ -23,6 +24,7 @@ import EditarSolicitudPage from "@/features/constancias/pages/EditarSolicitudPag
 import GenerarConstanciaPage from "@/features/constancias/pages/GenerarConstanciaPage";
 import MovilesPage from "@/features/moviles/pages/MovilesPage";
 import AgregarMovilPage from "@/features/moviles/pages/AgregarMovilPage";
+import FichaMovilPage from "@/features/moviles/pages/FichaMovilPage";
 import { NoEncontradaPage } from "@/features/sistema/pages/NoEncontradaPage";
 import NuevoUsuarioPage from "@/features/usuarios/pages/NuevoUsuarioPage";
 import DetalleUsuarioPage from "@/features/usuarios/pages/DetalleUsuarioPage";
@@ -165,10 +167,11 @@ const generarConstanciaRoute = createRoute({
   component: GenerarConstanciaPage,
 });
 
-// US04: lista de móviles (destino después del alta) y alta.
+// US04: lista de móviles (destino después del alta) y alta. US06: búsqueda (?q=) y ficha.
 const movilesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/moviles",
+  validateSearch: validarBusquedaMoviles,
   component: MovilesPage,
 });
 
@@ -180,6 +183,14 @@ const nuevoMovilRoute = createRoute({
     if (!tieneRol("AUTOMOTORES")) throw redirect({ to: "/moviles" });
   },
   component: AgregarMovilPage,
+});
+
+// US06: ficha técnica. "/moviles/nuevo" es una ruta fija, así que no la toma como id.
+const fichaMovilRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/moviles/$id",
+  validateSearch: validarBusquedaFicha,
+  component: FichaMovilPage,
 });
 
 /* Usuarios y roles: solo el administrador general. El back también lo valida
@@ -242,6 +253,7 @@ const routeTree = rootRoute.addChildren([
     generarConstanciaRoute,
     movilesRoute,
     nuevoMovilRoute,
+    fichaMovilRoute,
     usuariosRoute,
     nuevoUsuarioRoute,
     detalleUsuarioRoute,
@@ -269,6 +281,7 @@ declare module "@tanstack/history" {
     editada?: boolean;
     sesionVencida?: boolean; // la sesión expiró y hay que avisarlo en el login
     movilCreado?: string; // denominación del móvil recién creado (US04)
+    listaMoviles?: BusquedaMoviles; // búsqueda de la lista, para volver desde la ficha (US06)
     usuarioCreado?: string; // correo del usuario recién creado
   }
 }

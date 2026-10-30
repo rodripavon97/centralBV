@@ -10,6 +10,7 @@ import {
   listarMarcas,
   listarModelos,
   listarMoviles,
+  obtenerMovil,
   obtenerResumenFlota,
   renombrarItem,
 } from "./flotaApi";
@@ -158,5 +159,28 @@ describe("flotaApi", () => {
   it("el resumen devuelve ErrorApi si falla", async () => {
     vi.spyOn(http, "get").mockRejectedValue(errorHttp(500, {}));
     await expect(obtenerResumenFlota()).rejects.toBeInstanceOf(ErrorApi);
+  });
+
+  it("manda la búsqueda recortada y la omite si está vacía (US06)", async () => {
+    const get = vi.spyOn(http, "get").mockResolvedValue({ data: { items: [], total: 0 } });
+    await listarMoviles({ busqueda: "  ae 012 " });
+    expect(get).toHaveBeenLastCalledWith("/flota/vehiculos", {
+      params: { busqueda: "ae 012", ordenPor: "denominacion", orden: "asc", pagina: 1, porPagina: 100 },
+    });
+    await listarMoviles({ busqueda: "   " });
+    expect(get).toHaveBeenLastCalledWith("/flota/vehiculos", {
+      params: { ordenPor: "denominacion", orden: "asc", pagina: 1, porPagina: 100 },
+    });
+  });
+
+  it("obtiene un móvil por id, también dado de baja", async () => {
+    const get = vi.spyOn(http, "get").mockResolvedValue({ data: { ...movilApi, estado: "BAJA_DEFINITIVA" } });
+    await expect(obtenerMovil(movilApi.id)).resolves.toMatchObject({ codigo: "M-4", estado: "baja_definitiva" });
+    expect(get).toHaveBeenCalledWith(`/flota/vehiculos/${movilApi.id}`);
+  });
+
+  it("obtenerMovil devuelve ErrorApi con el status del back", async () => {
+    vi.spyOn(http, "get").mockRejectedValue(errorHttp(404, { message: "El vehículo de emergencia no existe" }));
+    await expect(obtenerMovil("x")).rejects.toMatchObject({ status: 404 });
   });
 });
