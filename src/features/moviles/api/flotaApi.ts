@@ -1,8 +1,9 @@
 import type { AxiosResponse } from "axios";
 import { aErrorApi, http } from "@/lib/http";
-import type { Catalogo, EstadoMovil, ItemCatalogo, ModeloCatalogo, MovilFlota, ValoresMovil } from "../domain/movil";
+import type { EstadoVehiculo } from "@/types/dominio";
+import { ordenarPorDenominacion, type Catalogo, type EstadoMovil, type ItemCatalogo, type ModeloCatalogo, type MovilFlota, type ValoresMovil } from "../domain/movil";
 
-/* Llamadas a /flota de centralBV_back (US04, US45, US46).
+/* Llamadas a /flota de centralBV_back (US04, US05, US45, US46).
    Acá se traducen los nombres del back (OPERATIVO, denominacion, valor)
    a los del front, así las pantallas no dependen del formato de la API.
    El token lo agrega el interceptor de src/app/configurarHttp.ts. */
@@ -15,6 +16,13 @@ const ESTADO_DESDE_API: Record<EstadoApi, EstadoMovil> = {
   FUERA_SERVICIO: "fuera_de_servicio",
   MANTENIMIENTO: "mantenimiento",
   BAJA_DEFINITIVA: "baja_definitiva",
+};
+
+const ESTADO_A_API: Record<EstadoVehiculo, Exclude<EstadoApi, "BAJA_DEFINITIVA">> = {
+  operativo: "OPERATIVO",
+  observaciones: "OBSERVACIONES",
+  fuera_de_servicio: "FUERA_SERVICIO",
+  mantenimiento: "MANTENIMIENTO",
 };
 
 interface ItemCatalogoApi {
@@ -97,6 +105,47 @@ export async function crearMovil(
     }),
   );
   return movilDesdeApi(r);
+}
+
+/* ---------- Dashboard de flota (US05) ---------- */
+
+/** Filtros del dashboard. El back filtra; el orden y la paginación los hace el front. */
+export interface FiltroFlota {
+  estado?: EstadoVehiculo;
+  tipoId?: string;
+}
+
+/** Móviles activos que cumplen los filtros, en orden natural (M-2 antes que M-10).
+    El back ordena como texto ("M-10" antes que "M-2"), por eso se trae toda la flota
+    (hasta 100 móviles) y se ordena y pagina acá. */
+export async function listarFlota(filtro: FiltroFlota = {}): Promise<MovilFlota[]> {
+  const r = await datosDe(
+    http.get<{ items: MovilApi[]; total: number }>("/flota/vehiculos", {
+      params: {
+        ...(filtro.estado && { estado: ESTADO_A_API[filtro.estado] }),
+        ...(filtro.tipoId && { tipoId: filtro.tipoId }),
+        pagina: 1,
+        porPagina: POR_PAGINA_MOVILES,
+      },
+    }),
+  );
+  return ordenarPorDenominacion(r.items.map(movilDesdeApi));
+}
+
+/** Cantidad de móviles activos por estado (contadores del dashboard). */
+export interface ResumenFlota {
+  total: number;
+  porEstado: Record<EstadoVehiculo, number>;
+}
+
+export async function obtenerResumenFlota(): Promise<ResumenFlota> {
+  const r = await datosDe(
+    http.get<{ total: number; porEstado: Partial<Record<EstadoApi, number>> }>("/flota/vehiculos/resumen"),
+  );
+  const porEstado = Object.fromEntries(
+    Object.entries(ESTADO_A_API).map(([estado, api]) => [estado, r.porEstado[api] ?? 0]),
+  ) as Record<EstadoVehiculo, number>;
+  return { total: r.total, porEstado };
 }
 
 /* ---------- Catálogos (tipos, marcas y modelos) ---------- */

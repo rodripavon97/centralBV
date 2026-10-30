@@ -72,6 +72,16 @@ describe("SolicitudesPage (US09)", () => {
     expect(listarMock).toHaveBeenCalledWith({ busqueda: "", estado: "pendiente", orden: "desc", pagina: 1 });
   });
 
+  it("descarta los filtros inválidos de la URL", async () => {
+    guardarToken(tokenVigente());
+    listarMock.mockResolvedValue({ items: [], total: 0, pagina: 1, paginas: 0 });
+
+    renderApp("/solicitudes?estado=roto&orden=cualquiera&pagina=-3&q=%20%20");
+
+    await screen.findByRole("heading", { name: "Solicitudes" });
+    expect(listarMock).toHaveBeenCalledWith({ busqueda: "", estado: undefined, orden: "desc", pagina: 1 });
+  });
+
   it("avisa cuando el usuario no tiene el rol Administrativo", async () => {
     guardarToken(tokenVigente());
     listarMock.mockRejectedValue(new ErrorApi(403, "No tienes permisos suficientes para esta acción"));

@@ -9,15 +9,20 @@ export interface BusquedaSolicitudes {
   pagina?: number;
 }
 
-/** Valida lo que llega por la URL y descarta lo que no corresponde. */
+/** Valida lo que llega por la URL y descarta lo que no corresponde.
+    Devuelve siempre todas las claves (undefined si el valor es inválido): TanStack Router
+    combina el resultado con los parámetros crudos, y una clave omitida dejaría pasar el valor crudo. */
 export function validarBusquedaSolicitudes(search: Record<string, unknown>): BusquedaSolicitudes {
-  const resultado: BusquedaSolicitudes = {};
-  if (typeof search.q === "string" && search.q.trim()) resultado.q = search.q.trim();
-  if (typeof search.estado === "string" && search.estado in ESTADOS_SOLICITUD) {
-    resultado.estado = search.estado as EstadoSolicitud;
-  }
-  if (search.orden === "asc") resultado.orden = "asc";
+  const q = typeof search.q === "string" ? search.q.trim() : "";
   const pagina = Number(search.pagina);
-  if (Number.isInteger(pagina) && pagina > 1) resultado.pagina = pagina;
-  return resultado;
+  return {
+    q: q || undefined,
+    // Object.hasOwn: con "in" pasarían nombres heredados como "toString".
+    estado:
+      typeof search.estado === "string" && Object.hasOwn(ESTADOS_SOLICITUD, search.estado)
+        ? (search.estado as EstadoSolicitud)
+        : undefined,
+    orden: search.orden === "asc" ? "asc" : undefined,
+    pagina: Number.isInteger(pagina) && pagina > 1 ? pagina : undefined,
+  };
 }

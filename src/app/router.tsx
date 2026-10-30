@@ -10,6 +10,7 @@ import { LoginRoutePage } from "@/features/auth/pages/LoginRoutePage";
 import { leerSesion, tieneRol } from "@/features/auth/session";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { validarBusquedaSolicitudes } from "@/features/constancias/domain/busqueda";
+import { validarBusquedaFlota } from "@/features/moviles/domain/flota";
 import SolicitudesPage from "@/features/constancias/pages/SolicitudesPage";
 import NuevaSolicitudPage from "@/features/constancias/pages/NuevaSolicitudPage";
 import SolicitudDetallePage from "@/features/constancias/pages/SolicitudDetallePage";
@@ -74,6 +75,8 @@ const appRoute = createRoute({
 const dashboardRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/dashboard",
+  // US05: filtros del dashboard de flota (?estado=&tipo=&pagina=).
+  validateSearch: validarBusquedaFlota,
   component: DashboardPage,
 });
 

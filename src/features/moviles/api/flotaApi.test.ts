@@ -1,7 +1,18 @@
 import { AxiosError, AxiosHeaders } from "axios";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErrorApi, http } from "@/lib/http";
-import { crearItem, crearModelo, crearMovil, eliminarItem, listarMarcas, listarModelos, listarMoviles, renombrarItem } from "./flotaApi";
+import {
+  crearItem,
+  crearModelo,
+  crearMovil,
+  eliminarItem,
+  listarFlota,
+  listarMarcas,
+  listarModelos,
+  listarMoviles,
+  obtenerResumenFlota,
+  renombrarItem,
+} from "./flotaApi";
 
 const movilApi = {
   id: "44444444-4444-4444-8444-444444444444",
@@ -107,5 +118,45 @@ describe("flotaApi", () => {
 
     await eliminarItem("modelos", "mo2");
     expect(patch).toHaveBeenCalledWith("/flota/catalogos/modelos/mo2/desactivar");
+  });
+
+  it("lista la flota filtrada y la ordena en orden natural", async () => {
+    const get = vi.spyOn(http, "get").mockResolvedValue({
+      data: {
+        items: [
+          { ...movilApi, id: "a", denominacion: "M-10", estado: "MANTENIMIENTO" },
+          { ...movilApi, id: "b", denominacion: "M-2" },
+        ],
+        total: 2,
+      },
+    });
+    const flota = await listarFlota({ estado: "mantenimiento", tipoId: "t1" });
+    expect(flota.map((m) => m.codigo)).toEqual(["M-2", "M-10"]);
+    expect(flota[1].estado).toBe("mantenimiento");
+    expect(get).toHaveBeenCalledWith("/flota/vehiculos", {
+      params: { estado: "MANTENIMIENTO", tipoId: "t1", pagina: 1, porPagina: 100 },
+    });
+  });
+
+  it("sin filtros no manda estado ni tipo", async () => {
+    const get = vi.spyOn(http, "get").mockResolvedValue({ data: { items: [], total: 0 } });
+    await listarFlota();
+    expect(get).toHaveBeenCalledWith("/flota/vehiculos", { params: { pagina: 1, porPagina: 100 } });
+  });
+
+  it("traduce el resumen por estado y completa los que faltan con 0", async () => {
+    const get = vi.spyOn(http, "get").mockResolvedValue({
+      data: { total: 5, porEstado: { OPERATIVO: 3, OBSERVACIONES: 1, MANTENIMIENTO: 1 } },
+    });
+    await expect(obtenerResumenFlota()).resolves.toEqual({
+      total: 5,
+      porEstado: { operativo: 3, observaciones: 1, fuera_de_servicio: 0, mantenimiento: 1 },
+    });
+    expect(get).toHaveBeenCalledWith("/flota/vehiculos/resumen");
+  });
+
+  it("el resumen devuelve ErrorApi si falla", async () => {
+    vi.spyOn(http, "get").mockRejectedValue(errorHttp(500, {}));
+    await expect(obtenerResumenFlota()).rejects.toBeInstanceOf(ErrorApi);
   });
 });

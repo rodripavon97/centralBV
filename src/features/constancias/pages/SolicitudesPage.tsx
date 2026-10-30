@@ -6,6 +6,7 @@ import { Button, ButtonLink } from "@/components/centralbv/Button";
 import { EmptyState } from "@/components/centralbv/EmptyState";
 import { focus } from "@/components/centralbv/estilos";
 import { Input, Select } from "@/components/centralbv/Field";
+import { Paginacion } from "@/components/centralbv/Paginacion";
 import { ErrorApi } from "@/lib/http";
 import {
   POR_PAGINA,
@@ -272,19 +273,15 @@ function Tabla({
         </table>
       </div>
       {paginas > 1 && (
-        <nav aria-label="Paginación" className="flex items-center justify-between gap-4 border-t border-border-subtle px-4 py-3">
-          <p className="text-code text-text-muted tabular-nums">
-            {desde}–{hasta} de {total}
-          </p>
-          <div className="flex gap-2">
-            <Button disabled={pagina <= 1} onClick={() => onPagina(pagina - 1)}>
-              Anterior
-            </Button>
-            <Button disabled={pagina >= paginas} onClick={() => onPagina(pagina + 1)}>
-              Siguiente
-            </Button>
-          </div>
-        </nav>
+        <Paginacion
+          pagina={pagina}
+          paginas={paginas}
+          desde={desde}
+          hasta={hasta}
+          total={total}
+          onPagina={onPagina}
+          className="border-t border-border-subtle px-4 py-3"
+        />
       )}
     </div>
   );
