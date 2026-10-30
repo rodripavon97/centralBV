@@ -40,15 +40,27 @@ centralBV/
 │  │     └─ estilos.ts          Clases compartidas (foco, variantes de botón)
 │  │
 │  ├─ features/                 Una carpeta por funcionalidad
-│  │  ├─ auth/                  Login y manejo de sesión
+│  │  ├─ auth/                  Login, recuperación de contraseña y sesión
 │  │  │  ├─ api/
-│  │  │  │  └─ authApi.ts       Llamadas HTTP del login
+│  │  │  │  └─ authApi.ts       Llamadas HTTP del login y de la recuperación (US03)
+│  │  │  ├─ components/
+│  │  │  │  ├─ AuthLayout.tsx   Estructura de dos columnas de las pantallas públicas
+│  │  │  │  ├─ CampoAuth.tsx    Campo con etiqueta y error de las pantallas públicas
+│  │  │  │  ├─ EnlaceInvalido.tsx  Estado "el enlace ya no es válido"
+│  │  │  │  └─ estilos.ts       Clases compartidas por las pantallas públicas
 │  │  │  ├─ domain/
-│  │  │  │  └─ credenciales.ts  Validación y normalización de credenciales
+│  │  │  │  ├─ credenciales.ts  Validación y normalización de credenciales
+│  │  │  │  └─ recuperacion.ts  Validación del correo y de la nueva contraseña
 │  │  │  ├─ pages/
-│  │  │  │  ├─ LoginPage.tsx        Pantalla de login
-│  │  │  │  ├─ LoginPage.test.tsx   Tests de la pantalla de login
-│  │  │  │  └─ LoginRoutePage.tsx   Adaptador entre la ruta y LoginPage
+│  │  │  │  ├─ LoginPage.tsx                 Pantalla de login
+│  │  │  │  ├─ LoginPage.test.tsx            Tests de la pantalla de login
+│  │  │  │  ├─ LoginRoutePage.tsx            Adaptador entre la ruta y LoginPage
+│  │  │  │  ├─ RecuperarContrasenaPage.tsx   Pedir el enlace
+│  │  │  │  ├─ RecuperarEnviadoPage.tsx      Confirmación del envío
+│  │  │  │  ├─ RestablecerContrasenaPage.tsx Formulario de nueva contraseña
+│  │  │  │  ├─ ContrasenaRestablecidaPage.tsx Confirmación final
+│  │  │  │  └─ RecuperacionContrasenaPage.test.tsx Tests del flujo US03
+│  │  │  ├─ recuperacion.ts     Token y correo que viajan entre las pantallas
 │  │  │  └─ session.ts          Lectura, guardado y borrado del token
 │  │  │
 │  │  ├─ constancias/           Solicitudes de constancia (M4 · US08, US09, US13)
@@ -158,6 +170,11 @@ pages / components  →  hooks  →  domain
 |---|---|---|
 | `/` | Redirige según sesión | — |
 | `/login` | Pública; si hay sesión activa redirige a `/dashboard` | `LoginRoutePage` |
+| `/recuperar-contrasena` | Pública; si hay sesión activa redirige a `/dashboard` | `RecuperarContrasenaPage` |
+| `/recuperar-contrasena/enviado` | Pública; si hay sesión activa redirige a `/dashboard` | `RecuperarEnviadoPage` |
+| `/restablecer-contrasena` | Pública; recibe el token del correo | `RestablecerContrasenaPage` |
+| `/update-password` | Alias de `/restablecer-contrasena` para el enlace del back | `RestablecerContrasenaPage` |
+| `/restablecer-contrasena/lista` | Solo después de restablecer | `ContrasenaRestablecidaPage` |
 | `/dashboard` | Requiere sesión activa | `DashboardPage` |
 | `/solicitudes` | Requiere sesión activa | `SolicitudesPage` (`?q=&estado=&orden=&pagina=`) |
 | `/solicitudes/nueva` | Requiere sesión activa | `NuevaSolicitudPage` |
@@ -173,8 +190,9 @@ Flujo de autenticación:
 1. `main.tsx` monta `RouterProvider` con el router de `app/router.tsx` e importa `app/configurarHttp.ts`.
 2. `beforeLoad` llama a `leerSesion()`, que lee el token de `localStorage` y revisa su `exp`.
 3. `LoginPage` valida credenciales, llama a `iniciarSesion()` en `authApi`, guarda el `access_token` y navega a `/dashboard`.
-4. Cada pedido lleva `Authorization: Bearer <token>`. Si el back responde 401, se borra el token y se vuelve a `/login` con el aviso de sesión vencida (viaja en el estado del historial, no en la URL).
+4. Cada pedido lleva `Authorization: Bearer <token>`. Si el back responde 401, se borra el token y se vuelve a `/login` con el aviso de sesión vencida (viaja en el estado del historial, no en la URL). Los endpoints de `/auth` quedan afuera de ese redirect: manejan sus propios errores.
 5. El botón "Cerrar sesión" del riel borra el token.
+6. Recuperación (US03): `/recuperar-contrasena` llama a `POST /auth/forgot-password`; el correo trae un enlace que cae en `/restablecer-contrasena` (o `/update-password`) con el token en el hash. El token se guarda en `sessionStorage` y se limpia de la URL; al restablecer se llama a `POST /auth/reset-password` y se marca como usado para que reabrir el enlace muestre "El enlace ya no es válido".
 
 El token se guarda en `localStorage` con la clave `centralbv.token`. La API se configura con `VITE_API_URL` y por defecto apunta a `http://localhost:3000`.
 

@@ -7,4 +7,5 @@ Object.defineProperty(window, "scrollTo", { value: vi.fn(), writable: true });
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  window.sessionStorage.clear();
 });
