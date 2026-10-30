@@ -125,6 +125,17 @@ Desde el detalle de una solicitud pendiente, **Generar constancia** abre `/solic
 - **Imprimir** abre un diálogo con las 3 hojas en A4 (la hoja 1 queda en el cuartel; las hojas 2 y 3 se entregan).
 - Las hojas 1, 2 y 3 comparten membrete y datos. Solo la hoja 1 lleva los espacios de RETIRO, DNI, FIRMA y FECHA.
 
+### Firmar la constancia (US44 · T31)
+
+- En el visor de una solicitud REALIZADA aparece **Marcar como firmada**. Se usa cuando la hoja 1 impresa ya tiene la firma.
+- Llama a `PATCH /solicitudes/:id/firmar` (REALIZADA → FIRMADA). La pantalla queda en el visor con el estado actualizado y el aviso "Constancia marcada como firmada. Ya se puede entregar."
+
+### Historial de solicitudes (US47)
+
+- `/solicitudes` tiene dos pestañas: **Activas** (US09) e **Historial** (`?vista=historial`).
+- El historial usa `GET /solicitudes/completadas`: solo trae las entregadas (RETIRADA), con búsqueda, orden por fecha de alta y paginación. No tiene filtro de estado.
+- Columnas: N.º, fecha de alta, damnificado con DNI, estado, fecha y hora de entrega y quién retiró.
+
 Pendiente: definir el listado exacto de campos por tipo y por destino.
 
 ## 5. Usuarios y roles (desktop)

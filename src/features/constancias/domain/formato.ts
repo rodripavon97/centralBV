@@ -81,6 +81,17 @@ export function formatearFechaHora(fecha: string, hora: string) {
   return `${formatearFecha(fecha)} ${formatearHora(hora)}`;
 }
 
+/** Instante ISO del back → "17/10/2026 11:05" en hora de Argentina. */
+export function formatearInstante(iso: string) {
+  const fecha = new Date(iso).toLocaleDateString("sv-SE", { timeZone: "America/Argentina/Buenos_Aires" });
+  const hora = new Date(iso).toLocaleTimeString("sv-SE", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return formatearFechaHora(fecha, hora);
+}
+
 /** Fecha local de hoy como "2026-10-22". */
 export function hoy() {
   const d = new Date();

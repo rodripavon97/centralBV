@@ -4,14 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { crearRouter } from "@/app/router";
 import { guardarToken } from "@/features/auth/session";
 import { ErrorApi } from "@/lib/http";
-import { listarSolicitudes } from "../api/solicitudesApi";
+import { listarHistorial, listarSolicitudes } from "../api/solicitudesApi";
 
 vi.mock("../api/solicitudesApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api/solicitudesApi")>();
-  return { ...actual, listarSolicitudes: vi.fn() };
+  return { ...actual, listarSolicitudes: vi.fn(), listarHistorial: vi.fn() };
 });
 
 const listarMock = vi.mocked(listarSolicitudes);
+const historialMock = vi.mocked(listarHistorial);
 
 function tokenVigente(): string {
   const payload = btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 60 * 60 }));
@@ -25,6 +26,8 @@ function renderApp(path: string) {
 
 beforeEach(() => {
   window.localStorage.clear();
+  listarMock.mockReset();
+  historialMock.mockReset();
 });
 
 describe("SolicitudesPage (US09)", () => {
@@ -80,6 +83,60 @@ describe("SolicitudesPage (US09)", () => {
 
     await screen.findByRole("heading", { name: "Solicitudes" });
     expect(listarMock).toHaveBeenCalledWith({ busqueda: "", estado: undefined, orden: "desc", pagina: 1 });
+  });
+
+  it("muestra el historial de entregadas con quién retiró y cuándo (US47)", async () => {
+    guardarToken(tokenVigente());
+    historialMock.mockResolvedValue({
+      items: [
+        {
+          id: "22222222-2222-4222-8222-222222222222",
+          numero: "SOL-0007",
+          fechaAlta: "2026-10-12",
+          estado: "entregada",
+          damnificado: { nombre: "Roberto Acosta", dni: "30123456" },
+          siniestro: {
+            tipo: "vivienda",
+            fecha: "2026-10-12",
+            hora: "10:00",
+            direccion: "Av. Mitre 1250",
+            numeroParte: "212",
+            motivo: "Incendio de vivienda",
+            localidad: "José C. Paz",
+            partido: "José C. Paz",
+            perdidas: "No se estiman",
+          },
+          constancia: { destino: "seguro", razonSocial: "Sancor Seguros", numeroPoliza: "1" },
+          // 14:05 UTC son las 11:05 en Argentina.
+          retiradoEn: "2026-10-17T14:05:00+00:00",
+          retiradoPorNombre: "Roberto Acosta",
+          retiradoPorDni: "30123456",
+        },
+      ],
+      total: 1,
+      pagina: 1,
+      paginas: 1,
+    });
+
+    renderApp("/solicitudes?vista=historial&estado=pendiente");
+
+    const fila = (await screen.findByRole("link", { name: "SOL-0007" })).closest("tr")!;
+    expect(within(fila).getByText("Entregada")).toBeInTheDocument();
+    expect(within(fila).getByText("17/10/2026 11:05")).toBeInTheDocument();
+    expect(within(fila).getByText("DNI 30.123.456")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Historial" })).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("combobox", { name: "Filtrar por estado" })).not.toBeInTheDocument();
+    expect(historialMock).toHaveBeenCalledWith({ busqueda: "", orden: "desc", pagina: 1 });
+    expect(listarMock).not.toHaveBeenCalled();
+  });
+
+  it("avisa cuando el historial está vacío", async () => {
+    guardarToken(tokenVigente());
+    historialMock.mockResolvedValue({ items: [], total: 0, pagina: 1, paginas: 0 });
+
+    renderApp("/solicitudes?vista=historial");
+
+    expect(await screen.findByRole("heading", { name: "El historial está vacío" })).toBeInTheDocument();
   });
 
   it("avisa cuando el usuario no tiene el rol Administrativo", async () => {

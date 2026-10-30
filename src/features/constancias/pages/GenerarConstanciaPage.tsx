@@ -7,6 +7,7 @@ import {
   FileText,
   Loader2,
   Lock,
+  PenLine,
   Printer,
   RotateCcw,
   SearchX,
@@ -17,7 +18,7 @@ import { Alert } from "@/components/centralbv/Alert";
 import { EmptyState } from "@/components/centralbv/EmptyState";
 import { Field, Textarea } from "@/components/centralbv/Field";
 import { focus } from "@/components/centralbv/estilos";
-import { descargarConstanciaPdf, generarConstancia, obtenerSolicitud } from "../api/solicitudesApi";
+import { descargarConstanciaPdf, firmarSolicitud, generarConstancia, obtenerSolicitud } from "../api/solicitudesApi";
 import { useConsulta } from "../hooks/useConsulta";
 import EstadoBadge from "../components/EstadoBadge";
 import HojaConstancia from "../components/HojaConstancia";
@@ -90,7 +91,7 @@ export default function GenerarConstanciaPage() {
     );
   }
 
-  return <Visor solicitud={solicitud} />;
+  return <Visor solicitud={solicitud} onFirmada={setActualizada} />;
 }
 
 function VolverSolicitud({ numero, id }: { numero: string; id: string }) {
@@ -231,9 +232,10 @@ function Formulario({
 
 /* ---------- Paso 2: constancia generada ---------- */
 
-function Visor({ solicitud }: { solicitud: Solicitud }) {
+function Visor({ solicitud, onFirmada }: { solicitud: Solicitud; onFirmada: (s: Solicitud) => void }) {
   const [hoja, setHoja] = useState(1);
   const [descargando, setDescargando] = useState(false);
+  const [firmando, setFirmando] = useState(false);
   const [imprimiendo, setImprimiendo] = useState(false);
   const [aviso, setAviso] = useState<string>();
   const [error, setError] = useState<string>();
@@ -265,6 +267,20 @@ function Visor({ solicitud }: { solicitud: Solicitud }) {
     }
   };
 
+  // US44: se marca una vez que la hoja 1 impresa ya tiene la firma. Habilita la entrega.
+  const firmar = async () => {
+    setFirmando(true);
+    setError(undefined);
+    try {
+      onFirmada(await firmarSolicitud(solicitud.id));
+      setAviso("Constancia marcada como firmada. Ya se puede entregar.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo marcar como firmada");
+    } finally {
+      setFirmando(false);
+    }
+  };
+
   const hojaActual = HOJAS.find((h) => h.numero === hoja) ?? HOJAS[0];
 
   return (
@@ -279,7 +295,10 @@ function Visor({ solicitud }: { solicitud: Solicitud }) {
             </h1>
             <EstadoBadge estado={solicitud.estado} />
           </div>
-          <p className="text-sm text-text-muted">3 hojas · formato A4 · membrete oficial</p>
+          <p className="text-sm text-text-muted">
+            3 hojas · formato A4 · membrete oficial
+            {solicitud.estado === "constancia_generada" && " · Marcala como firmada cuando la hoja 1 ya tenga la firma"}
+          </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button variant="primary" onClick={descargar} disabled={descargando}>
@@ -299,6 +318,21 @@ function Visor({ solicitud }: { solicitud: Solicitud }) {
             <Printer size={16} strokeWidth={1.5} aria-hidden />
             Imprimir
           </Button>
+          {solicitud.estado === "constancia_generada" && (
+            <Button variant="primary" onClick={firmar} disabled={firmando}>
+              {firmando ? (
+                <>
+                  <Loader2 size={16} strokeWidth={1.5} className="animate-spin" aria-hidden />
+                  Marcando…
+                </>
+              ) : (
+                <>
+                  <PenLine size={16} strokeWidth={1.5} aria-hidden />
+                  Marcar como firmada
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </header>
 

@@ -4,7 +4,9 @@ import { ErrorApi, http } from "@/lib/http";
 import {
   crearSolicitud,
   descargarConstanciaPdf,
+  firmarSolicitud,
   generarConstancia,
+  listarHistorial,
   listarSolicitudes,
   obtenerSolicitud,
   registrarPago,
@@ -144,6 +146,33 @@ describe("solicitudesApi", () => {
       metodoPago: undefined,
       motivoExento: "Acción social",
     });
+  });
+
+  it("pide el historial a /completadas sin filtro de estado (US47)", async () => {
+    const get = vi.spyOn(http, "get").mockResolvedValue({
+      data: {
+        items: [{ ...solicitudApi, estado: "RETIRADA", retiradoEn: "2026-10-17T14:05:00+00:00" }],
+        total: 1,
+        pagina: 1,
+        paginas: 1,
+      },
+    });
+
+    const pagina = await listarHistorial({ busqueda: " Acosta ", orden: "asc" });
+
+    expect(get).toHaveBeenCalledWith("/solicitudes/completadas", {
+      params: { busqueda: "Acosta", orden: "asc", pagina: 1, porPagina: 20 },
+    });
+    expect(pagina.items[0]).toMatchObject({ estado: "entregada", retiradoEn: "2026-10-17T14:05:00+00:00" });
+  });
+
+  it("marca la solicitud como firmada en /firmar (T31)", async () => {
+    const patch = vi.spyOn(http, "patch").mockResolvedValue({ data: { ...solicitudApi, estado: "FIRMADA" } });
+
+    const s = await firmarSolicitud(solicitudApi.id);
+
+    expect(patch).toHaveBeenCalledWith(`/solicitudes/${solicitudApi.id}/firmar`);
+    expect(s.estado).toBe("firmada");
   });
 
   it("devuelve null si la solicitud no existe", async () => {

@@ -1,8 +1,10 @@
 import type { EstadoSolicitud } from "@/types/dominio";
 import { ESTADOS_SOLICITUD } from "./formato";
 
-/** Parámetros de la URL del listado (US09): /solicitudes?q=&estado=&orden=&pagina= */
+/** Parámetros de la URL del listado (US09): /solicitudes?q=&estado=&orden=&pagina=
+    Con ?vista=historial se ve el historial de entregadas (US47), que no filtra por estado. */
 export interface BusquedaSolicitudes {
+  vista?: "historial";
   q?: string;
   estado?: EstadoSolicitud;
   orden?: "asc";
@@ -15,11 +17,13 @@ export interface BusquedaSolicitudes {
 export function validarBusquedaSolicitudes(search: Record<string, unknown>): BusquedaSolicitudes {
   const q = typeof search.q === "string" ? search.q.trim() : "";
   const pagina = Number(search.pagina);
+  const historial = search.vista === "historial";
   return {
+    vista: historial ? "historial" : undefined,
     q: q || undefined,
     // Object.hasOwn: con "in" pasarían nombres heredados como "toString".
     estado:
-      typeof search.estado === "string" && Object.hasOwn(ESTADOS_SOLICITUD, search.estado)
+      !historial && typeof search.estado === "string" && Object.hasOwn(ESTADOS_SOLICITUD, search.estado)
         ? (search.estado as EstadoSolicitud)
         : undefined,
     orden: search.orden === "asc" ? "asc" : undefined,

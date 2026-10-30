@@ -248,6 +248,21 @@ export async function listarSolicitudes(filtro: FiltroSolicitudes): Promise<Pagi
   return { items: r.items.map(desdeApi), total: r.total, pagina: r.pagina, paginas: r.paginas };
 }
 
+/** US47: historial de solicitudes entregadas (RETIRADA). El back no filtra por estado acá. */
+export async function listarHistorial(filtro: Omit<FiltroSolicitudes, "estado">): Promise<PaginaSolicitudes> {
+  const r = await datosDe(
+    http.get<{ items: SolicitudApi[]; total: number; pagina: number; paginas: number }>("/solicitudes/completadas", {
+      params: {
+        busqueda: filtro.busqueda?.trim() || undefined,
+        orden: filtro.orden ?? "desc",
+        pagina: filtro.pagina ?? 1,
+        porPagina: POR_PAGINA,
+      },
+    }),
+  );
+  return { items: r.items.map(desdeApi), total: r.total, pagina: r.pagina, paginas: r.paginas };
+}
+
 export async function obtenerSolicitud(id: string): Promise<Solicitud | null> {
   try {
     return desdeApi(await datosDe(http.get<SolicitudApi>(`/solicitudes/${encodeURIComponent(id)}`)));
@@ -295,6 +310,11 @@ export async function generarConstancia(id: string, observaciones: string): Prom
       { responseType: "blob" },
     ),
   );
+}
+
+/** US44: REALIZADA → FIRMADA, una vez firmada la hoja 1 en papel. */
+export async function firmarSolicitud(id: string): Promise<Solicitud> {
+  return desdeApi(await datosDe(http.patch<SolicitudApi>(`/solicitudes/${encodeURIComponent(id)}/firmar`)));
 }
 
 /** Descarga el PDF de una solicitud ya generada (REALIZADA, FIRMADA o RETIRADA). */
