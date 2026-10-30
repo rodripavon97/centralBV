@@ -9,12 +9,12 @@ import { borrarToken, leerSesion } from "@/features/auth/session";
 const destinos: {
   label: string;
   icon: LucideIcon;
-  to?: "/dashboard" | "/solicitudes" | "/usuarios";
+  to?: "/dashboard" | "/solicitudes" | "/usuarios" | "/moviles";
   soloAdmin?: boolean;
 }[] = [
   { label: "Panel", icon: LayoutGrid, to: "/dashboard" },
   { label: "Solicitudes", icon: FileText, to: "/solicitudes" },
-  { label: "Móviles", icon: Truck },
+  { label: "Móviles", icon: Truck, to: "/moviles" },
   { label: "Usuarios", icon: Users, to: "/usuarios", soloAdmin: true },
 ];
 
