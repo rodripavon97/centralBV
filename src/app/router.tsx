@@ -25,6 +25,8 @@ import MovilesPage from "@/features/moviles/pages/MovilesPage";
 import AgregarMovilPage from "@/features/moviles/pages/AgregarMovilPage";
 import { NoEncontradaPage } from "@/features/sistema/pages/NoEncontradaPage";
 import NuevoUsuarioPage from "@/features/usuarios/pages/NuevoUsuarioPage";
+import DetalleUsuarioPage from "@/features/usuarios/pages/DetalleUsuarioPage";
+import EditarUsuarioPage from "@/features/usuarios/pages/EditarUsuarioPage";
 import UsuariosPage from "@/features/usuarios/pages/UsuariosPage";
 import Guia from "@/guia";
 import AppLayout from "./AppLayout";
@@ -203,6 +205,20 @@ const nuevoUsuarioRoute = createRoute({
   component: NuevoUsuarioPage,
 });
 
+const detalleUsuarioRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/usuarios/$id",
+  beforeLoad: exigirAdmin,
+  component: DetalleUsuarioPage,
+});
+
+const editarUsuarioRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/usuarios/$id/editar",
+  beforeLoad: exigirAdmin,
+  component: EditarUsuarioPage,
+});
+
 const guiaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/guia",
@@ -228,6 +244,8 @@ const routeTree = rootRoute.addChildren([
     nuevoMovilRoute,
     usuariosRoute,
     nuevoUsuarioRoute,
+    detalleUsuarioRoute,
+    editarUsuarioRoute,
   ]),
   guiaRoute,
 ]);

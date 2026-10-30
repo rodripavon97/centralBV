@@ -1,5 +1,5 @@
 import { aErrorApi, http } from "@/lib/http";
-import type { DatosUsuario } from "../domain/validacionUsuario";
+import type { DatosEdicionUsuario, DatosUsuario } from "../domain/validacionUsuario";
 import type { PaginaUsuarios, Usuario } from "../domain/usuario";
 
 /* Llamadas a /users de centralBV_back. El token lo agrega el interceptor
@@ -52,9 +52,19 @@ export async function listarUsuarios(): Promise<PaginaUsuarios> {
   return { items: pagina.items.map(desdeApi), total: pagina.total };
 }
 
+export async function obtenerUsuario(id: string): Promise<Usuario> {
+  const usuario = await datosDe(http.get<UsuarioApi>(`/users/${encodeURIComponent(id)}`));
+  return desdeApi(usuario);
+}
+
 /** POST /users: crea la cuenta y dispara el correo de bienvenida. */
 export async function crearUsuario(datos: DatosUsuario): Promise<CrearUsuarioApi> {
   return datosDe(http.post<CrearUsuarioApi>("/users", datos));
+}
+
+export async function actualizarUsuario(id: string, datos: DatosEdicionUsuario): Promise<Usuario> {
+  const usuario = await datosDe(http.patch<UsuarioApi>(`/users/${encodeURIComponent(id)}`, datos));
+  return desdeApi(usuario);
 }
 
 /** Reenvía el correo de bienvenida de un usuario existente. */

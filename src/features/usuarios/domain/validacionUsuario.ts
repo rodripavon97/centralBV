@@ -17,6 +17,8 @@ export interface DatosUsuario {
   roleName: RolUsuario;
 }
 
+export type DatosEdicionUsuario = Omit<DatosUsuario, "password">;
+
 export type CampoUsuario = keyof ValoresUsuario;
 export type ErroresUsuario = Partial<Record<CampoUsuario, string>>;
 
@@ -51,7 +53,7 @@ export const REGLAS_CONTRASENA: ReglaContrasena[] = [
 export const cumpleContrasena = (password: string): boolean =>
   REGLAS_CONTRASENA.every((regla) => regla.cumple(password));
 
-export function validarUsuario(valores: ValoresUsuario): ErroresUsuario {
+export function validarUsuario(valores: ValoresUsuario, incluirContrasena = true): ErroresUsuario {
   const errores: ErroresUsuario = {};
   const nombre = valores.nombre.trim();
   const apellido = valores.apellido.trim();
@@ -66,9 +68,9 @@ export function validarUsuario(valores: ValoresUsuario): ErroresUsuario {
   if (!email) errores.email = "Ingresá el correo electrónico.";
   else if (!EMAIL_VALIDO.test(email)) errores.email = "Ingresá un correo electrónico válido.";
 
-  if (!valores.password) {
+  if (incluirContrasena && !valores.password) {
     errores.password = "Ingresá una contraseña temporal.";
-  } else if (!cumpleContrasena(valores.password)) {
+  } else if (incluirContrasena && !cumpleContrasena(valores.password)) {
     errores.password = "La contraseña debe tener 8 caracteres o más, una mayúscula, una minúscula y un número.";
   }
 
@@ -84,6 +86,15 @@ export function datosDesdeValores(valores: ValoresUsuario): DatosUsuario {
     apellido: valores.apellido.trim(),
     email: valores.email.trim().toLowerCase(),
     password: valores.password,
+    roleName: valores.rol as RolUsuario,
+  };
+}
+
+export function datosEditadosDesdeValores(valores: ValoresUsuario): DatosEdicionUsuario {
+  return {
+    nombre: valores.nombre.trim(),
+    apellido: valores.apellido.trim(),
+    email: valores.email.trim().toLowerCase(),
     roleName: valores.rol as RolUsuario,
   };
 }
