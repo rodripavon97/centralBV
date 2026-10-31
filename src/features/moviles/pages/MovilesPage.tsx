@@ -1,31 +1,67 @@
-import { useLocation } from "@tanstack/react-router";
-import { CircleCheck, CircleX, Lock, Plus, RotateCcw, Truck } from "lucide-react";
+import { useEffect } from "react";
+import { Link, getRouteApi, useLocation } from "@tanstack/react-router";
+import { ChevronRight, CircleCheck, CircleX, Lock, Plus, RotateCcw, SearchX, Truck } from "lucide-react";
 import { Alert } from "@/components/centralbv/Alert";
 import { Button, ButtonLink } from "@/components/centralbv/Button";
 import { EmptyState } from "@/components/centralbv/EmptyState";
+import { Paginacion } from "@/components/centralbv/Paginacion";
+import { focus } from "@/components/centralbv/estilos";
 import { tieneRol } from "@/features/auth/session";
 import { useConsulta } from "@/features/constancias/hooks/useConsulta";
 import { ErrorApi } from "@/lib/http";
-import { listarMoviles, type PaginaMoviles } from "../api/flotaApi";
-import { ordenarPorDenominacion } from "../domain/movil";
+import { useMediaQuery } from "@/lib/useMediaQuery";
+import { listarMoviles } from "../api/flotaApi";
+import { POR_PAGINA_LISTA, type BusquedaMoviles } from "../domain/busquedaMoviles";
+import { paginar } from "../domain/flota";
+import { ordenarPorDenominacion, type MovilFlota } from "../domain/movil";
 import { formatearPatente } from "../domain/patente";
+import BuscadorMoviles from "../components/BuscadorMoviles";
 import EstadoMovilBadge from "../components/EstadoMovilBadge";
+import TarjetaMovil from "../components/TarjetaMovil";
 
-const plural = (n: number) => `${n} ${n === 1 ? "móvil" : "móviles"}`;
+const ruta = getRouteApi("/app/moviles");
+
+const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
 
 /**
- * Lista de móviles (Figma S2 · "Móviles lista"). En US04 es el destino después
- * del alta, con el aviso "Móvil M-4 creado con estado Operativo."; la búsqueda
- * y la ficha llegan con US06.
+ * Lista de móviles (Figma S2 · "Móviles lista"). US04: destino después del alta, con el aviso
+ * "Móvil M-4 creado con estado Operativo.". US06: búsqueda por número interno o patente
+ * (?q= en la URL) y cada fila abre la ficha. El back filtra; el orden natural (M-2 antes
+ * que M-10) y la paginación se hacen acá, como en el dashboard.
  */
 export default function MovilesPage() {
+  const search = ruta.useSearch();
+  const navigate = ruta.useNavigate();
   const movilCreado = useLocation({ select: (l) => l.state.movilCreado });
   const puedeAgregar = tieneRol("AUTOMOTORES");
-  const { consulta, reintentar } = useConsulta("moviles", listarMoviles);
+  const angosto = useMediaQuery("(max-width: 39.9375rem)"); // menos de sm: tarjetas en vez de tabla
+  const q = search.q ?? "";
+  const pagina = search.pagina ?? 1;
+
+  // La búsqueda y la página viven en la URL: se pueden compartir y sobreviven al "atrás".
+  const actualizar = (cambios: Partial<BusquedaMoviles>) =>
+    void navigate({ search: (prev) => ({ ...prev, ...cambios }), replace: true });
+  const buscar = (texto: string) => actualizar({ q: texto || undefined, pagina: undefined });
+
+  const { consulta, anterior, reintentar } = useConsulta(`moviles:${q}`, () => listarMoviles({ busqueda: q }));
+  const datos = consulta.estado === "listo" ? consulta.datos : consulta.estado === "cargando" ? anterior : undefined;
+  const vista = datos ? paginar(ordenarPorDenominacion(datos.items), pagina, POR_PAGINA_LISTA) : undefined;
+
+  // Si la página de la URL ya no existe (p. ej. la búsqueda trae menos móviles), pasa a la última.
+  const paginaReal = consulta.estado === "listo" ? vista?.pagina : undefined;
+  useEffect(() => {
+    if (paginaReal !== undefined && paginaReal !== pagina) actualizar({ pagina: paginaReal > 1 ? paginaReal : undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paginaReal]);
 
   const sinPermiso = consulta.estado === "error" && consulta.error instanceof ErrorApi && consulta.error.status === 403;
-  const subtitulo =
-    consulta.estado === "cargando" ? "Cargando…" : consulta.estado === "listo" ? plural(consulta.datos.total) : "";
+  const sinMoviles = consulta.estado === "listo" && consulta.datos.total === 0 && !q;
+
+  let subtitulo = "";
+  if (consulta.estado === "cargando") subtitulo = anterior ? "Buscando…" : "Cargando…";
+  else if (consulta.estado === "listo") {
+    subtitulo = q ? plural(consulta.datos.total, "resultado", "resultados") : plural(consulta.datos.total, "móvil", "móviles");
+  }
 
   const agregar = (
     <ButtonLink to="/moviles/nuevo" variant="primary">
@@ -33,6 +69,9 @@ export default function MovilesPage() {
       Agregar móvil
     </ButtonLink>
   );
+
+  // Al volver de la ficha se recupera la misma búsqueda y página.
+  const volverA: BusquedaMoviles = { q: search.q, pagina: search.pagina };
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -50,6 +89,8 @@ export default function MovilesPage() {
         </Alert>
       )}
 
+      {consulta.estado !== "error" && !sinMoviles && <BuscadorMoviles valor={q} onBuscar={buscar} />}
+
       {sinPermiso ? (
         <EmptyState icon={Lock} title="No tenés acceso a los móviles" description="Pedile acceso al administrador general." />
       ) : consulta.estado === "error" ? (
@@ -65,9 +106,16 @@ export default function MovilesPage() {
             </Button>
           }
         />
-      ) : consulta.estado === "cargando" ? (
+      ) : !vista ? (
         <TablaCargando />
-      ) : consulta.datos.total === 0 ? (
+      ) : vista.total === 0 && q ? (
+        <EmptyState
+          icon={SearchX}
+          title="Móvil no encontrado"
+          description="No hay ningún móvil con ese número interno o patente."
+          action={<Button onClick={() => buscar("")}>Limpiar búsqueda</Button>}
+        />
+      ) : vista.total === 0 ? (
         <EmptyState
           icon={Truck}
           title="Todavía no hay móviles"
@@ -75,7 +123,27 @@ export default function MovilesPage() {
           action={puedeAgregar ? agregar : undefined}
         />
       ) : (
-        <Tabla datos={consulta.datos} />
+        <div className="flex flex-col gap-4">
+          {angosto ? (
+            <ul aria-label="Móviles" className="flex flex-col gap-3">
+              {vista.items.map((m) => (
+                <TarjetaMovil key={m.id} movil={m} volverA={volverA} />
+              ))}
+            </ul>
+          ) : (
+            <Tabla moviles={vista.items} volverA={volverA} />
+          )}
+          {vista.paginas > 1 && (
+            <Paginacion
+              pagina={vista.pagina}
+              paginas={vista.paginas}
+              desde={vista.desde}
+              hasta={vista.hasta}
+              total={vista.total}
+              onPagina={(p) => actualizar({ pagina: p > 1 ? p : undefined })}
+            />
+          )}
+        </div>
       )}
     </div>
   );
@@ -84,7 +152,9 @@ export default function MovilesPage() {
 const th = "h-10 px-4 text-left align-middle font-normal text-eyebrow";
 const td = "h-14 px-4 align-middle";
 
-function Tabla({ datos }: { datos: PaginaMoviles }) {
+/** Tabla de Figma. Toda la fila abre la ficha: el link está en el número interno y se estira
+    sobre la fila, así se llega con Tab y se abre con Enter. */
+function Tabla({ moviles, volverA }: { moviles: MovilFlota[]; volverA: BusquedaMoviles }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border-subtle bg-bg-surface">
       <div className="overflow-x-auto">
@@ -96,13 +166,23 @@ function Tabla({ datos }: { datos: PaginaMoviles }) {
               <th scope="col" className={th}>Tipo</th>
               <th scope="col" className={th}>Marca y modelo</th>
               <th scope="col" className={th}>Estado</th>
+              <th scope="col" className="w-12">
+                <span className="sr-only">Abrir ficha</span>
+              </th>
             </tr>
           </thead>
           <tbody>
-            {ordenarPorDenominacion(datos.items).map((m) => (
-              <tr key={m.id} className="border-t border-border-subtle">
+            {moviles.map((m) => (
+              <tr key={m.id} className="relative border-t border-border-subtle hover:bg-bg-raised">
                 <th scope="row" className={`${td} text-left font-semibold`}>
-                  {m.codigo}
+                  <Link
+                    to="/moviles/$id"
+                    params={{ id: m.id }}
+                    state={{ listaMoviles: volverA }}
+                    className={`rounded-sm after:absolute after:inset-0 after:content-[''] ${focus}`}
+                  >
+                    {m.codigo}
+                  </Link>
                 </th>
                 <td className={`${td} text-code`}>{formatearPatente(m.patente)}</td>
                 <td className={`${td} text-text-secondary`}>{m.tipo}</td>
@@ -111,6 +191,9 @@ function Tabla({ datos }: { datos: PaginaMoviles }) {
                 </td>
                 <td className={td}>
                   <EstadoMovilBadge estado={m.estado} />
+                </td>
+                <td className={`${td} text-text-muted`}>
+                  <ChevronRight size={16} strokeWidth={1.5} aria-hidden />
                 </td>
               </tr>
             ))}

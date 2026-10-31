@@ -35,8 +35,9 @@ centralBV/
 │  │     ├─ Alert.tsx           Aviso con tono danger/info/ok/neutral
 │  │     ├─ BrandMark.tsx       Logo y nombre de CentralBV
 │  │     ├─ Button.tsx          Button y ButtonLink (Link con aspecto de botón)
-│  │     ├─ EmptyState.tsx      Panel de vacío, sin resultados y error
+│  │     ├─ EmptyState.tsx      Panel de vacío, sin resultados y error (opción compacto)
 │  │     ├─ Field.tsx           Field, Input, Select y Textarea
+│  │     ├─ Paginacion.tsx      Pie "13–24 de 31" con Anterior / Siguiente
 │  │     └─ estilos.ts          Clases compartidas (foco, variantes de botón)
 │  │
 │  ├─ features/                 Una carpeta por funcionalidad
@@ -76,19 +77,48 @@ centralBV/
 │  │  │  │  └─ useConsulta.ts       Carga asíncrona con estados cargando/error/listo
 │  │  │  └─ pages/                  Listado, alta, detalle, edición y generación
 │  │  │
-│  │  └─ dashboard/
-│  │     └─ pages/
-│  │        └─ DashboardPage.tsx    Pantalla posterior al login
+│  │  ├─ dashboard/
+│  │  │  └─ pages/
+│  │  │     └─ DashboardPage.tsx    Dashboard de flota: contadores, filtros y tarjetas (US05)
+│  │  │
+│  │  ├─ moviles/               Móviles de emergencia (US04 alta, US05 dashboard, US06 ficha)
+│  │  │  ├─ api/
+│  │  │  │  └─ flotaApi.ts          Llamadas a /flota (móviles y catálogos) y traducción front ↔ back
+│  │  │  ├─ domain/
+│  │  │  │  ├─ movil.ts             Tipos, estados, validación del alta y orden natural (M-2 antes que M-10)
+│  │  │  │  ├─ patente.ts           Normalización y formato de patentes ("AB 123 CD")
+│  │  │  │  ├─ denominacion.ts      Normalización del número interno ("m1" → "M-1")
+│  │  │  │  ├─ flota.ts             Filtros de la URL del dashboard y paginación en el front
+│  │  │  │  └─ busquedaMoviles.ts   Parámetros de la URL de la lista (?q=) y de la ficha (?pestana=)
+│  │  │  ├─ components/             MovilForm, SelectorCatalogo, diálogos de catálogo y de patente especial,
+│  │  │  │                          EstadoMovilBadge, TarjetaMovil, ContadorEstado, FiltroSelect,
+│  │  │  │                          BuscadorMoviles, PestanasFicha, PanelesFicha
+│  │  │  ├─ hooks/
+│  │  │  │  └─ useCatalogos.ts      Tipos, marcas y modelos del formulario de alta
+│  │  │  └─ pages/                  MovilesPage (lista y búsqueda), AgregarMovilPage, FichaMovilPage
+│  │  │
+│  │  ├─ sistema/
+│  │  │  └─ pages/
+│  │  │     └─ NoEncontradaPage.tsx Página 404
+│  │  │
+│  │  └─ usuarios/              Gestión de usuarios (US01)
+│  │     ├─ api/                    usuariosApi.ts
+│  │     ├─ domain/                 Tipos y validación del formulario
+│  │     ├─ components/             TablaUsuarios, UsuarioForm, requisitos de contraseña, estados
+│  │     ├─ hooks/                  useUsuarios.ts
+│  │     └─ pages/                  Lista, alta, ficha, detalle y edición
 │  │
 │  ├─ lib/
-│  │  └─ http.ts                Cliente Axios compartido y ErrorApi
+│  │  ├─ http.ts                Cliente Axios compartido y ErrorApi
+│  │  └─ useMediaQuery.ts       true mientras se cumple una media query (diseño angosto / ancho)
 │  │
 │  ├─ styles/
 │  │  ├─ index.css              Entrada de estilos: Tailwind + fuentes + tokens
 │  │  └─ tokens.css             Única fuente de verdad de los tokens
 │  │
 │  ├─ test/
-│  │  └─ setup.ts               Configuración global de Vitest
+│  │  ├─ setup.ts               Configuración global de Vitest
+│  │  └─ token.ts               Token JWT de prueba con roles
 │  │
 │  ├─ types/
 │  │  └─ dominio.ts             Modelo de datos compartido del dominio
@@ -175,12 +205,15 @@ pages / components  →  hooks  →  domain
 | `/restablecer-contrasena` | Pública; recibe el token del correo | `RestablecerContrasenaPage` |
 | `/update-password` | Alias de `/restablecer-contrasena` para el enlace del back | `RestablecerContrasenaPage` |
 | `/restablecer-contrasena/lista` | Solo después de restablecer | `ContrasenaRestablecidaPage` |
-| `/dashboard` | Requiere sesión activa | `DashboardPage` |
+| `/dashboard` | Requiere sesión activa | `DashboardPage` (`?estado=&tipo=&pagina=`) |
 | `/solicitudes` | Requiere sesión activa | `SolicitudesPage` (`?q=&estado=&orden=&pagina=`) |
 | `/solicitudes/nueva` | Requiere sesión activa | `NuevaSolicitudPage` |
 | `/solicitudes/$id` | Requiere sesión activa | `SolicitudDetallePage` |
 | `/solicitudes/$id/editar` | Requiere sesión activa | `EditarSolicitudPage` |
 | `/solicitudes/$id/generar` | Requiere sesión activa | `GenerarConstanciaPage` (formulario o visor del PDF) |
+| `/moviles` | Requiere sesión activa | `MovilesPage` (`?q=&pagina=`) |
+| `/moviles/nuevo` | AUTOMOTORES (ADMIN siempre); si no, vuelve a `/moviles` | `AgregarMovilPage` |
+| `/moviles/$id` | Requiere sesión activa | `FichaMovilPage` (`?pestana=inventario\|revision`) |
 | `/guia` | Pública (demo de diseño y prototipo) | `Guia` |
 
 Las rutas con sesión cuelgan de una ruta sin path (`id: "app"`) que tiene el guard y el `AppLayout`; por eso sus ids son `/app/...` (por ejemplo, `getRouteApi("/app/solicitudes")`).
@@ -249,11 +282,11 @@ Según [flujos.md](./flujos.md) y [roles.md](./roles.md), faltan estas features.
 ```
 src/features/
 ├─ auth/            Login y sesión (existe)
-├─ dashboard/       Pantalla inicial (existe)
+├─ dashboard/       Dashboard de flota (existe)
 ├─ constancias/     Solicitudes (existe); falta entrega y pago (M4 2/2)
-├─ vehiculos/       Lista, detalle y ABM de móviles
+├─ moviles/         Alta, dashboard, lista y ficha (existe); faltan edición, revisiones (US07) e inventario (US17)
 ├─ inspeccion/      Checklist, pausa/retoma y envío
-└─ usuarios/        Gestión de usuarios, roles y permisos
+└─ usuarios/        Gestión de usuarios (existe); faltan roles y permisos
 ```
 
 Además, cuando se sume el primer componente de shadcn se crea `src/components/ui/`.
@@ -262,4 +295,4 @@ Además, cuando se sume el primer componente de shadcn se crea `src/components/u
 
 - `src/App.css` y `src/index.css` no se importan en ningún lado: se pueden eliminar.
 - `src/assets/react.svg` y `src/assets/vite.svg` son del template y no se usan.
-- `src/Cad.tsx` y `src/guia.tsx` son un prototipo/demo accesible en `/guia`; no forman parte del flujo productivo. Si el prototipo se convierte en feature, moverlo a `features/vehiculos`.
+- `src/Cad.tsx` y `src/guia.tsx` son un prototipo/demo accesible en `/guia`; no forman parte del flujo productivo. Si el prototipo se convierte en feature, moverlo a `features/moviles`.

@@ -93,6 +93,13 @@ en_curso ⇄ pausada → enviada
 
 ## 3. Administrador de móviles (desktop y tablet)
 
+Hecho:
+
+- **Alta (US04):** `/moviles/nuevo`, solo AUTOMOTORES (ADMIN siempre). Patente y número interno se normalizan ("ab 123 cd" → AB123CD, "m1" → M-1); una patente con formato desconocido pide confirmación. El móvil queda Operativo y se vuelve a la lista con el aviso.
+- **Dashboard de flota (US05):** contadores por estado, filtros por estado y tipo (en la URL) y tarjetas con código de color. Orden natural y paginación en el front: 12 por página, 6 en mobile.
+- **Lista y ficha (US06):** `/moviles` busca por número interno o patente (`?q=`, con 300 ms de espera). Sin resultados muestra "Móvil no encontrado". Cada fila (o tarjeta, en mobile) abre `/moviles/$id`, con las pestañas Datos generales, Inventario y Última revisión. Inventario (US17) y Última revisión (US07) muestran por ahora su estado vacío. Un id inexistente o inválido muestra "Móvil no encontrado". Los dados de baja no salen en la búsqueda, pero su ficha abre por URL.
+- La baja definitiva es solo de ADMIN.
+
 Pantallas previstas:
 
 1. **Lista de vehículos** (tabla), con filtros por estado y tipo.

@@ -140,4 +140,13 @@ describe("DashboardPage (US05)", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Reintentar" }));
     expect(await screen.findByRole("list", { name: "Flota" })).toBeInTheDocument();
   });
+
+  it("cada tarjeta abre la ficha del móvil (US06)", async () => {
+    guardarToken(tokenDePrueba(["COMUN"]));
+    vi.mocked(listarFlota).mockResolvedValue([movil(7)]);
+    renderApp();
+
+    const flota = await screen.findByRole("list", { name: "Flota" });
+    expect(within(flota).getByRole("link", { name: /M-7/ })).toHaveAttribute("href", "/moviles/7");
+  });
 });
