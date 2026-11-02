@@ -1,5 +1,6 @@
 import { Link, getRouteApi, useLocation } from "@tanstack/react-router";
-import { ArrowLeft, CircleX, RotateCcw, SearchX } from "lucide-react";
+import { ArrowLeft, CircleAlert, CircleCheck, CircleX, ClipboardCheck, RotateCcw, SearchX } from "lucide-react";
+import { Alert } from "@/components/centralbv/Alert";
 import { Button, ButtonLink } from "@/components/centralbv/Button";
 import { EmptyState } from "@/components/centralbv/EmptyState";
 import { focus } from "@/components/centralbv/estilos";
@@ -8,15 +9,23 @@ import { ErrorApi } from "@/lib/http";
 import { obtenerMovil } from "../api/flotaApi";
 import { PESTANAS_FICHA, idPanel, idPestana, type PestanaFicha } from "../domain/busquedaMoviles";
 import { formatearPatente } from "../domain/patente";
+import { textoRevisionGuardada } from "../domain/revision";
 import EstadoMovilBadge from "../components/EstadoMovilBadge";
 import PestanasFicha from "../components/PestanasFicha";
-import { PanelDatosGenerales, PanelInventario, PanelUltimaRevision } from "../components/PanelesFicha";
+import { PanelDatosGenerales, PanelInventario } from "../components/PanelesFicha";
+import PanelRevisiones from "../components/PanelRevisiones";
 
 const ruta = getRouteApi("/app/moviles/$id");
 
+const TONO_AVISO = { operativo: "ok", observaciones: "warn", fuera_de_servicio: "danger" } as const;
+const ICONO_AVISO = { operativo: CircleCheck, observaciones: CircleAlert, fuera_de_servicio: CircleX };
+
 /**
- * Ficha técnica de un móvil (US06 · Figma S4): datos generales, inventario y última revisión.
- * La pestaña va en la URL (?pestana=), así el Atrás y los links compartidos abren la misma vista.
+ * Ficha técnica de un móvil (US06 · Figma S4): datos generales, inventario y revisiones.
+ * US07: botón "Registrar revisión" (cualquier usuario, salvo móviles dados de baja), el historial
+ * de revisiones con el detalle de la elegida y el aviso "Revisión guardada…" al volver del formulario.
+ * La pestaña y la revisión elegida van en la URL (?pestana=&revision=), así el Atrás y los links
+ * compartidos abren la misma vista.
  * Un id inexistente (404) o inválido (400) muestra "Móvil no encontrado".
  */
 export default function FichaMovilPage() {
@@ -24,6 +33,7 @@ export default function FichaMovilPage() {
   const search = ruta.useSearch();
   const navigate = ruta.useNavigate();
   const volverA = useLocation({ select: (l) => l.state.listaMoviles });
+  const revisionGuardada = useLocation({ select: (l) => l.state.revisionGuardada });
   const pestana: PestanaFicha = search.pestana ?? "datos";
 
   const { consulta, reintentar } = useConsulta(`movil:${id}`, () => obtenerMovil(id));
@@ -32,9 +42,16 @@ export default function FichaMovilPage() {
 
   const cambiarPestana = (p: PestanaFicha) =>
     void navigate({
-      search: (prev) => ({ ...prev, pestana: p === "datos" ? undefined : p }),
+      search: (prev) => ({ ...prev, pestana: p === "datos" ? undefined : p, revision: undefined }),
       replace: true,
       state: (prev) => prev, // conserva la búsqueda de la lista para el "← Móviles"
+    });
+
+  const elegirRevision = (revision: string) =>
+    void navigate({
+      search: (prev) => ({ ...prev, pestana: "revision", revision }),
+      replace: true,
+      state: (prev) => prev,
     });
 
   const volver = (
@@ -89,22 +106,36 @@ export default function FichaMovilPage() {
     <div className="flex flex-col gap-6">
       {volver}
 
-      <header className="flex flex-col gap-1">
-        {movil ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-semibold">{movil.codigo}</h1>
-            <EstadoMovilBadge estado={movil.estado} />
-          </div>
-        ) : (
-          <h1 className="text-xl font-semibold">
-            <span className="sr-only">Cargando móvil</span>
-            <span aria-hidden className="block h-7 w-20 animate-pulse rounded-sm bg-bg-raised" />
-          </h1>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          {movil ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-xl font-semibold">{movil.codigo}</h1>
+              <EstadoMovilBadge estado={movil.estado} />
+            </div>
+          ) : (
+            <h1 className="text-xl font-semibold">
+              <span className="sr-only">Cargando móvil</span>
+              <span aria-hidden className="block h-7 w-20 animate-pulse rounded-sm bg-bg-raised" />
+            </h1>
+          )}
+          <p className="text-sm text-text-secondary" role="status">
+            {movil ? `${movil.tipo} · ${movil.marca} ${movil.modelo} · ${formatearPatente(movil.patente)}` : "Cargando…"}
+          </p>
+        </div>
+        {movil && movil.estado !== "baja_definitiva" && (
+          <ButtonLink to="/moviles/$id/revision" params={{ id }} variant="primary">
+            <ClipboardCheck size={16} strokeWidth={1.5} aria-hidden />
+            Registrar revisión
+          </ButtonLink>
         )}
-        <p className="text-sm text-text-secondary" role="status">
-          {movil ? `${movil.tipo} · ${movil.marca} ${movil.modelo} · ${formatearPatente(movil.patente)}` : "Cargando…"}
-        </p>
       </header>
+
+      {revisionGuardada && (
+        <Alert tone={TONO_AVISO[revisionGuardada.resultado]} icon={ICONO_AVISO[revisionGuardada.resultado]} role="status">
+          {textoRevisionGuardada(revisionGuardada.codigo, revisionGuardada.resultado)}
+        </Alert>
+      )}
 
       {/* Como en Figma, las pestañas se ven aunque el móvil todavía esté cargando. */}
       <PestanasFicha activa={pestana} onCambiar={cambiarPestana} />
@@ -118,7 +149,7 @@ export default function FichaMovilPage() {
           ) : p === "inventario" ? (
             <PanelInventario />
           ) : (
-            <PanelUltimaRevision />
+            <PanelRevisiones movilId={id} seleccion={search.revision} onSeleccionar={elegirRevision} />
           )}
         </div>
       ))}

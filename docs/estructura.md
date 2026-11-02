@@ -81,7 +81,7 @@ centralBV/
 │  │  │  └─ pages/
 │  │  │     └─ DashboardPage.tsx    Dashboard de flota: contadores, filtros y tarjetas (US05)
 │  │  │
-│  │  ├─ moviles/               Móviles de emergencia (US04 alta, US05 dashboard, US06 ficha)
+│  │  ├─ moviles/               Móviles de emergencia (US04 alta, US05 dashboard, US06 ficha, US07 revisión)
 │  │  │  ├─ api/
 │  │  │  │  └─ flotaApi.ts          Llamadas a /flota (móviles y catálogos) y traducción front ↔ back
 │  │  │  ├─ domain/
@@ -89,13 +89,17 @@ centralBV/
 │  │  │  │  ├─ patente.ts           Normalización y formato de patentes ("AB 123 CD")
 │  │  │  │  ├─ denominacion.ts      Normalización del número interno ("m1" → "M-1")
 │  │  │  │  ├─ flota.ts             Filtros de la URL del dashboard y paginación en el front
-│  │  │  │  └─ busquedaMoviles.ts   Parámetros de la URL de la lista (?q=) y de la ficha (?pestana=)
+│  │  │  │  ├─ busquedaMoviles.ts   Parámetros de la URL de la lista (?q=) y de la ficha (?pestana=)
+│  │  │  │  └─ revision.ts          Verificaciones, resultado, validación y resumen del historial (US07)
 │  │  │  ├─ components/             MovilForm, SelectorCatalogo, diálogos de catálogo y de patente especial,
 │  │  │  │                          EstadoMovilBadge, TarjetaMovil, ContadorEstado, FiltroSelect,
-│  │  │  │                          BuscadorMoviles, PestanasFicha, PanelesFicha
+│  │  │  │                          BuscadorMoviles, PestanasFicha, PanelesFicha,
+│  │  │  │                          EstadoVerificacion, SeccionRevision, FilaVerificacion, BadgeVerificacion,
+│  │  │  │                          PanelRevisiones (historial de revisiones)
 │  │  │  ├─ hooks/
 │  │  │  │  └─ useCatalogos.ts      Tipos, marcas y modelos del formulario de alta
-│  │  │  └─ pages/                  MovilesPage (lista y búsqueda), AgregarMovilPage, FichaMovilPage
+│  │  │  └─ pages/                  MovilesPage (lista y búsqueda), AgregarMovilPage, FichaMovilPage,
+│  │  │                             RegistrarRevisionPage
 │  │  │
 │  │  ├─ sistema/
 │  │  │  └─ pages/
@@ -213,7 +217,8 @@ pages / components  →  hooks  →  domain
 | `/solicitudes/$id/generar` | Requiere sesión activa | `GenerarConstanciaPage` (formulario o visor del PDF) |
 | `/moviles` | Requiere sesión activa | `MovilesPage` (`?q=&pagina=`) |
 | `/moviles/nuevo` | AUTOMOTORES (ADMIN siempre); si no, vuelve a `/moviles` | `AgregarMovilPage` |
-| `/moviles/$id` | Requiere sesión activa | `FichaMovilPage` (`?pestana=inventario\|revision`) |
+| `/moviles/$id` | Requiere sesión activa | `FichaMovilPage` (`?pestana=inventario\|revision&revision=<id>`) |
+| `/moviles/$id/revision` | Requiere sesión activa | `RegistrarRevisionPage` (US07) |
 | `/guia` | Pública (demo de diseño y prototipo) | `Guia` |
 
 Las rutas con sesión cuelgan de una ruta sin path (`id: "app"`) que tiene el guard y el `AppLayout`; por eso sus ids son `/app/...` (por ejemplo, `getRouteApi("/app/solicitudes")`).
@@ -284,7 +289,7 @@ src/features/
 ├─ auth/            Login y sesión (existe)
 ├─ dashboard/       Dashboard de flota (existe)
 ├─ constancias/     Solicitudes (existe); falta entrega y pago (M4 2/2)
-├─ moviles/         Alta, dashboard, lista y ficha (existe); faltan edición, revisiones (US07) e inventario (US17)
+├─ moviles/         Alta, dashboard, lista, ficha y revisión (existe); faltan edición e inventario (US17)
 ├─ inspeccion/      Checklist, pausa/retoma y envío
 └─ usuarios/        Gestión de usuarios (existe); faltan roles y permisos
 ```
