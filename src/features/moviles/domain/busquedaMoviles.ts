@@ -30,16 +30,22 @@ export type PestanaFicha = (typeof PESTANAS_FICHA)[number];
 export const ETIQUETAS_PESTANA: Record<PestanaFicha, string> = {
   datos: "Datos generales",
   inventario: "Inventario",
-  revision: "Última revisión",
+  revision: "Revisiones",
 };
 
 /** ids que conectan cada pestaña con su panel (aria-controls / aria-labelledby). */
 export const idPestana = (p: PestanaFicha) => `ficha-pestana-${p}`;
 export const idPanel = (p: PestanaFicha) => `ficha-panel-${p}`;
 
-/** /moviles/$id?pestana=  ·  sin pestana (o con una desconocida) se ve "Datos generales". */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * /moviles/$id?pestana=&revision=  ·  sin pestana (o con una desconocida) se ve "Datos generales".
+ * `revision` es la revisión elegida en el historial (US07); sin ella se ve la más nueva.
+ */
 export interface BusquedaFicha {
   pestana?: PestanaFicha;
+  revision?: string;
 }
 
 export function validarBusquedaFicha(search: Record<string, unknown>): BusquedaFicha {
@@ -50,5 +56,6 @@ export function validarBusquedaFicha(search: Record<string, unknown>): BusquedaF
       typeof pestana === "string" && pestana !== "datos" && (PESTANAS_FICHA as readonly string[]).includes(pestana)
         ? (pestana as PestanaFicha)
         : undefined,
+    revision: pestana === "revision" && typeof search.revision === "string" && UUID.test(search.revision) ? search.revision : undefined,
   };
 }

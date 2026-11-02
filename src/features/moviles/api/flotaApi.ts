@@ -1,6 +1,8 @@
 import type { AxiosResponse } from "axios";
 import { aErrorApi, http } from "@/lib/http";
 import type { EstadoVehiculo } from "@/types/dominio";
+import type { CodigoVerificacion, EstadoVerificacion, PaginaRevisiones, RevisionMovil, ValoresRevision } from "../domain/revision";
+import { REVISIONES_POR_PAGINA, VERIFICACIONES, resultadoRevision } from "../domain/revision";
 import { ordenarPorDenominacion, type Catalogo, type EstadoMovil, type ItemCatalogo, type ModeloCatalogo, type MovilFlota, type ValoresMovil } from "../domain/movil";
 
 /* Llamadas a /flota de centralBV_back (US04, US05, US45, US46).
@@ -196,4 +198,122 @@ export async function renombrarItem(catalogo: Catalogo, id: string, nombre: stri
 /** "Eliminar" en Figma: el back lo desactiva. Falla con 409 si algún móvil activo lo usa. */
 export async function eliminarItem(catalogo: Catalogo, id: string): Promise<void> {
   await datosDe(http.patch(`${ruta(catalogo)}/${id}/desactivar`));
+}
+
+/* ---------- Revisiones (US07 · T44, back de Luca Barneto) ----------
+   POST /flota/vehiculos/:id/revisiones
+     { nivelAceite: { estado: "OK" | "ADVERTENCIA" | "CRITICO", comentario: string | null },
+       frenos, refrigerante, bateria, presionNeumaticos, lucesYBalizas, sirenaYComunicaciones,
+       comentarioGeneral: string | null }   (comentario obligatorio si el estado no es OK)
+     → 201 RevisionApi. Guarda quién la registró (del token) y actualiza el estado del móvil,
+     en una transacción, con la misma regla que el front. 409 si el móvil está dado de baja;
+     400 { campo: "comentarioGeneral" } si estaba En mantenimiento y no se contó qué se hizo.
+   GET /flota/vehiculos/:id/revisiones?pagina=&porPagina= → { items: RevisionApi[], total, pagina, paginas }
+     (más nueva primero)
+   GET /flota/vehiculos/:id/revisiones/:revisionId → RevisionApi, o 404. */
+
+type EstadoVerificacionApi = "OK" | "ADVERTENCIA" | "CRITICO";
+
+type ClaveItemApi =
+  | "nivelAceite"
+  | "refrigerante"
+  | "frenos"
+  | "bateria"
+  | "presionNeumaticos"
+  | "lucesYBalizas"
+  | "sirenaYComunicaciones";
+
+const CLAVE_API: Record<CodigoVerificacion, ClaveItemApi> = {
+  ACEITE: "nivelAceite",
+  REFRIGERANTE: "refrigerante",
+  FRENOS: "frenos",
+  BATERIA: "bateria",
+  NEUMATICOS: "presionNeumaticos",
+  LUCES: "lucesYBalizas",
+  SIRENA: "sirenaYComunicaciones",
+};
+
+const VERIFICACION_A_API: Record<EstadoVerificacion, EstadoVerificacionApi> = {
+  ok: "OK",
+  atencion: "ADVERTENCIA",
+  critico: "CRITICO",
+};
+const VERIFICACION_DESDE_API: Record<EstadoVerificacionApi, EstadoVerificacion> = {
+  OK: "ok",
+  ADVERTENCIA: "atencion",
+  CRITICO: "critico",
+};
+
+interface ItemRevisionApi {
+  estado: EstadoVerificacionApi;
+  comentario: string | null;
+}
+
+export type RevisionApi = Record<ClaveItemApi, ItemRevisionApi> & {
+  id: string;
+  vehiculoId: string;
+  comentarioGeneral: string | null;
+  revisadoPor: { id: string; nombre: string } | null;
+  creadoEn: string;
+};
+
+interface PaginaRevisionesApi {
+  items: RevisionApi[];
+  total: number;
+  pagina: number;
+  paginas: number;
+}
+
+export function revisionDesdeApi(r: RevisionApi): RevisionMovil {
+  const items = VERIFICACIONES.map(({ codigo }) => {
+    const item = r[CLAVE_API[codigo]];
+    return {
+      codigo,
+      estado: VERIFICACION_DESDE_API[item?.estado] ?? "ok",
+      ...(item?.comentario && { detalle: item.comentario }),
+    };
+  });
+  return {
+    id: r.id,
+    realizadaEn: r.creadoEn,
+    // El back no devuelve el resultado: se calcula con la misma regla con la que actualizó el móvil.
+    resultado: resultadoRevision(items.map((i) => i.estado)),
+    ...(r.revisadoPor?.nombre && { revisadoPor: r.revisadoPor.nombre }),
+    ...(r.comentarioGeneral && { comentario: r.comentarioGeneral }),
+    items,
+  };
+}
+
+/** Registra una revisión del móvil. El back recalcula y guarda el estado nuevo del móvil. */
+export async function registrarRevision(id: string, v: ValoresRevision): Promise<RevisionMovil> {
+  const cuerpo: Record<string, unknown> = { comentarioGeneral: v.comentario.trim() || null };
+  for (const { codigo } of VERIFICACIONES) {
+    const item = v.items[codigo];
+    const estado = item?.estado ?? "ok";
+    cuerpo[CLAVE_API[codigo]] = {
+      estado: VERIFICACION_A_API[estado],
+      comentario: estado === "ok" ? null : item?.detalle.trim() || null,
+    };
+  }
+  const r = await datosDe(http.post<RevisionApi>(`/flota/vehiculos/${encodeURIComponent(id)}/revisiones`, cuerpo));
+  return revisionDesdeApi(r);
+}
+
+/** Una página del historial de revisiones del móvil, de la más nueva a la más vieja. */
+export async function listarRevisiones(id: string, pagina = 1): Promise<PaginaRevisiones> {
+  const r = await datosDe(
+    http.get<PaginaRevisionesApi>(`/flota/vehiculos/${encodeURIComponent(id)}/revisiones`, {
+      params: { pagina, porPagina: REVISIONES_POR_PAGINA },
+    }),
+  );
+  return { items: r.items.map(revisionDesdeApi), total: r.total, pagina: r.pagina, paginas: r.paginas };
+}
+
+/** Una revisión puntual del móvil (para abrirla desde un link). 404 si no existe o es de otro móvil. */
+export async function obtenerRevision(id: string, revisionId: string): Promise<RevisionMovil> {
+  return revisionDesdeApi(
+    await datosDe(
+      http.get<RevisionApi>(`/flota/vehiculos/${encodeURIComponent(id)}/revisiones/${encodeURIComponent(revisionId)}`),
+    ),
+  );
 }

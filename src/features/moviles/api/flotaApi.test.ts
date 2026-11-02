@@ -12,6 +12,9 @@ import {
   listarMoviles,
   obtenerMovil,
   obtenerResumenFlota,
+  listarRevisiones,
+  obtenerRevision,
+  registrarRevision,
   renombrarItem,
 } from "./flotaApi";
 
@@ -182,5 +185,103 @@ describe("flotaApi", () => {
   it("obtenerMovil devuelve ErrorApi con el status del back", async () => {
     vi.spyOn(http, "get").mockRejectedValue(errorHttp(404, { message: "El vehículo de emergencia no existe" }));
     await expect(obtenerMovil("x")).rejects.toMatchObject({ status: 404 });
+  });
+
+  describe("revisiones (US07)", () => {
+    const ok = { estado: "OK" as const, comentario: null };
+    const revisionApi = {
+      id: "r1",
+      vehiculoId: "m1",
+      nivelAceite: ok,
+      frenos: { estado: "CRITICO" as const, comentario: "Pedal esponjoso" },
+      refrigerante: ok,
+      bateria: ok,
+      presionNeumaticos: { estado: "ADVERTENCIA" as const, comentario: "Trasera baja" },
+      lucesYBalizas: ok,
+      sirenaYComunicaciones: ok,
+      comentarioGeneral: null,
+      revisadoPor: { id: "u1", nombre: "Lucía Ríos" },
+      creadoEn: "2026-10-25T02:50:00Z",
+    };
+
+    it("registra la revisión con las claves del back", async () => {
+      const post = vi.spyOn(http, "post").mockResolvedValue({ data: revisionApi });
+      const items = Object.fromEntries(
+        ["ACEITE", "REFRIGERANTE", "FRENOS", "BATERIA", "NEUMATICOS", "LUCES", "SIRENA"].map((c) => [
+          c,
+          c === "FRENOS"
+            ? { estado: "critico" as const, detalle: " Pedal esponjoso " }
+            : c === "NEUMATICOS"
+              ? { estado: "atencion" as const, detalle: "Trasera baja" }
+              : { estado: "ok" as const, detalle: "texto que no se manda" },
+        ]),
+      );
+      const r = await registrarRevision("m1", { comentario: "  ", items });
+
+      expect(post).toHaveBeenCalledWith("/flota/vehiculos/m1/revisiones", {
+        nivelAceite: ok,
+        refrigerante: ok,
+        frenos: { estado: "CRITICO", comentario: "Pedal esponjoso" },
+        bateria: ok,
+        presionNeumaticos: { estado: "ADVERTENCIA", comentario: "Trasera baja" },
+        lucesYBalizas: ok,
+        sirenaYComunicaciones: ok,
+        comentarioGeneral: null,
+      });
+      expect(r).toMatchObject({
+        id: "r1",
+        realizadaEn: "2026-10-25T02:50:00Z",
+        resultado: "fuera_de_servicio",
+        revisadoPor: "Lucía Ríos",
+      });
+      expect(r).not.toHaveProperty("comentario");
+      expect(r.items).toHaveLength(7);
+      expect(r.items).toContainEqual({ codigo: "FRENOS", estado: "critico", detalle: "Pedal esponjoso" });
+      expect(r.items).toContainEqual({ codigo: "NEUMATICOS", estado: "atencion", detalle: "Trasera baja" });
+      expect(r.items).toContainEqual({ codigo: "ACEITE", estado: "ok" });
+    });
+
+    it("el resultado sale de los ítems, con la regla del back; sin autor no hay revisadoPor", async () => {
+      vi.spyOn(http, "get").mockResolvedValueOnce({
+        data: { ...revisionApi, frenos: ok, comentarioGeneral: "Rutina", revisadoPor: null },
+      });
+      const r = await obtenerRevision("m1", "r1");
+      expect(r).toMatchObject({ resultado: "observaciones", comentario: "Rutina" });
+      expect(r).not.toHaveProperty("revisadoPor");
+    });
+
+    it("trae el historial paginado, de a 10", async () => {
+      const get = vi.spyOn(http, "get").mockResolvedValueOnce({
+        data: { items: [revisionApi], total: 12, pagina: 2, paginas: 2, porPagina: 10 },
+      });
+      const pagina = await listarRevisiones("m1", 2);
+      expect(get).toHaveBeenCalledWith("/flota/vehiculos/m1/revisiones", { params: { pagina: 2, porPagina: 10 } });
+      expect(pagina).toMatchObject({ total: 12, pagina: 2, paginas: 2 });
+      expect(pagina.items[0]).toMatchObject({ id: "r1", resultado: "fuera_de_servicio" });
+    });
+
+    it("trae una revisión puntual", async () => {
+      const get = vi.spyOn(http, "get").mockResolvedValueOnce({ data: revisionApi });
+      await expect(obtenerRevision("m1", "r1")).resolves.toMatchObject({ id: "r1" });
+      expect(get).toHaveBeenCalledWith("/flota/vehiculos/m1/revisiones/r1");
+    });
+
+    it("en mantenimiento sin comentario el back marca el campo comentarioGeneral", async () => {
+      vi.spyOn(http, "post").mockRejectedValue(
+        errorHttp(400, { message: "Contá qué se hizo", campo: "comentarioGeneral", code: "COMENTARIO_OBLIGATORIO" }),
+      );
+      await expect(registrarRevision("m1", { comentario: "", items: {} })).rejects.toMatchObject({
+        status: 400,
+        campo: "comentarioGeneral",
+      });
+    });
+
+    it("un 409 del back (móvil dado de baja) llega con su mensaje", async () => {
+      vi.spyOn(http, "post").mockRejectedValue(errorHttp(409, { message: "El vehículo ya está dado de baja definitiva" }));
+      await expect(registrarRevision("m1", { comentario: "", items: {} })).rejects.toMatchObject({
+        status: 409,
+        message: "El vehículo ya está dado de baja definitiva",
+      });
+    });
   });
 });

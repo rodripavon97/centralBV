@@ -97,7 +97,13 @@ Hecho:
 
 - **Alta (US04):** `/moviles/nuevo`, solo AUTOMOTORES (ADMIN siempre). Patente y número interno se normalizan ("ab 123 cd" → AB123CD, "m1" → M-1); una patente con formato desconocido pide confirmación. El móvil queda Operativo y se vuelve a la lista con el aviso.
 - **Dashboard de flota (US05):** contadores por estado, filtros por estado y tipo (en la URL) y tarjetas con código de color. Orden natural y paginación en el front: 12 por página, 6 en mobile.
-- **Lista y ficha (US06):** `/moviles` busca por número interno o patente (`?q=`, con 300 ms de espera). Sin resultados muestra "Móvil no encontrado". Cada fila (o tarjeta, en mobile) abre `/moviles/$id`, con las pestañas Datos generales, Inventario y Última revisión. Inventario (US17) y Última revisión (US07) muestran por ahora su estado vacío. Un id inexistente o inválido muestra "Móvil no encontrado". Los dados de baja no salen en la búsqueda, pero su ficha abre por URL.
+- **Lista y ficha (US06):** `/moviles` busca por número interno o patente (`?q=`, con 300 ms de espera). Sin resultados muestra "Móvil no encontrado". Cada fila (o tarjeta, en mobile) abre `/moviles/$id`, con las pestañas Datos generales, Inventario y Última revisión. Inventario (US17) muestra por ahora su estado vacío. Un id inexistente o inválido muestra "Móvil no encontrado". Los dados de baja no salen en la búsqueda, pero su ficha abre por URL.
+- **Revisión del móvil (US07):** `/moviles/$id/revision`, desde el botón "Registrar revisión" de la ficha. La puede registrar cualquier usuario con sesión, y queda guardado quién la hizo. Tiene 7 verificaciones Ok / Atención / Crítico en tres secciones (Mecánica y fluidos: aceite, refrigerante, frenos, batería; Neumáticos; Equipamiento: luces y balizas, sirena y comunicaciones) y un comentario general. Guardar se habilita con las 7 marcadas; Atención o Crítico piden el detalle. Al guardar vuelve a la ficha, en Revisiones, con el aviso del resultado. Un móvil dado de baja no se revisa.
+  - Resultado: algún Crítico → Fuera de servicio; si no, alguna Atención → Con observaciones; si no, Operativo. Frenos lleva la marca CRÍTICO (seguridad), con la misma regla. El back aplica la regla y actualiza el estado en la misma transacción en que guarda la revisión.
+  - Un móvil En mantenimiento se puede revisar: el comentario general pasa a ser obligatorio ("Qué se hizo en el mantenimiento") y, si todo queda en Ok, vuelve a Operativo (decidido el 01/11).
+  - VTV, seguro, service, kilometraje y combustible quedaron fuera del MVP.
+- **Historial de revisiones (US07 · T48):** la pestaña Revisiones de la ficha lista las revisiones del móvil, de la más nueva a la más vieja (fecha, resultado, qué no estuvo en Ok y quién la hizo), de a 10 con "Ver más". Al elegir una se ve su detalle; sin elegir, la más nueva. La elegida va en la URL (`?pestana=revision&revision=<id>`), así un link abre esa revisión. En desktop, lista y detalle van lado a lado; en mobile, uno abajo del otro.
+  - Marcar el estado de los materiales es otra US (Release 2).
 - La baja definitiva es solo de ADMIN.
 
 Pantallas previstas:
@@ -177,4 +183,4 @@ Reglas:
 
 ## 7. Estados que tiene que tener toda pantalla
 
-Normal, cargando, vacío y error. En la lista de vehículos, además, "sin resultados de búsqueda".
+Normal, cargando, vacío y error. En la lista de vehículos, además, "sin resultados de búsqueda".

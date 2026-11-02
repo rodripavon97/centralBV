@@ -25,6 +25,8 @@ import GenerarConstanciaPage from "@/features/constancias/pages/GenerarConstanci
 import MovilesPage from "@/features/moviles/pages/MovilesPage";
 import AgregarMovilPage from "@/features/moviles/pages/AgregarMovilPage";
 import FichaMovilPage from "@/features/moviles/pages/FichaMovilPage";
+import RegistrarRevisionPage from "@/features/moviles/pages/RegistrarRevisionPage";
+import type { ResultadoRevision } from "@/features/moviles/domain/revision";
 import { NoEncontradaPage } from "@/features/sistema/pages/NoEncontradaPage";
 import NuevoUsuarioPage from "@/features/usuarios/pages/NuevoUsuarioPage";
 import DetalleUsuarioPage from "@/features/usuarios/pages/DetalleUsuarioPage";
@@ -193,6 +195,13 @@ const fichaMovilRoute = createRoute({
   component: FichaMovilPage,
 });
 
+// US07: revisión del móvil. Cualquier usuario con sesión la registra (lo valida el back).
+const revisionMovilRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/moviles/$id/revision",
+  component: RegistrarRevisionPage,
+});
+
 /* Usuarios y roles: solo el administrador general. El back también lo valida
    (RolesGuard); acá se evita que un usuario con otro rol llegue a la pantalla. */
 const exigirAdmin = () => {
@@ -254,6 +263,7 @@ const routeTree = rootRoute.addChildren([
     movilesRoute,
     nuevoMovilRoute,
     fichaMovilRoute,
+    revisionMovilRoute,
     usuariosRoute,
     nuevoUsuarioRoute,
     detalleUsuarioRoute,
@@ -282,6 +292,7 @@ declare module "@tanstack/history" {
     sesionVencida?: boolean; // la sesión expiró y hay que avisarlo en el login
     movilCreado?: string; // denominación del móvil recién creado (US04)
     listaMoviles?: BusquedaMoviles; // búsqueda de la lista, para volver desde la ficha (US06)
+    revisionGuardada?: { codigo: string; resultado: ResultadoRevision }; // aviso al volver a la ficha (US07)
     usuarioCreado?: string; // correo del usuario recién creado
   }
 }
