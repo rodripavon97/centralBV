@@ -24,6 +24,9 @@ const r01: MovilFlota = {
   tipo: "Rescate",
   marca: "Ford",
   modelo: "F-350",
+  tipoId: "t1",
+  marcaId: "m1",
+  modeloId: "mo1",
   estado: "operativo",
 };
 

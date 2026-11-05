@@ -15,6 +15,7 @@ import {
   validarMovil,
   type Catalogo,
   type CampoMovil,
+  type EstadoMovil,
   type ValoresMovil,
 } from "../domain/movil";
 import { esPatenteConocida, formatearPatente } from "../domain/patente";
@@ -78,6 +79,7 @@ export default function MovilForm({
   recargarCatalogos,
   puedeEditarCatalogos,
   inicial = VALORES_MOVIL_VACIOS,
+  estadoActual,
   textoGuardar,
   onGuardar,
   onCancelar,
@@ -86,6 +88,8 @@ export default function MovilForm({
   recargarCatalogos: () => Promise<void>;
   puedeEditarCatalogos: boolean;
   inicial?: ValoresMovil;
+  /** En edición muestra el estado actual; en alta se omite y se muestra Operativo. */
+  estadoActual?: EstadoMovil;
   textoGuardar: string;
   onGuardar: GuardarMovil;
   onCancelar: () => void;
@@ -277,9 +281,19 @@ export default function MovilForm({
         <section className="flex flex-col gap-4">
           <h2 className="text-eyebrow">Estado</h2>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md bg-bg-raised px-4 py-3.5 text-sm">
-            <span className="text-text-secondary">Estado inicial</span>
-            <EstadoMovilBadge estado="operativo" />
-            <span className="text-text-muted">Disponible · se asigna automáticamente</span>
+            {estadoActual ? (
+              <>
+                <span className="text-text-secondary">Estado actual</span>
+                <EstadoMovilBadge estado={estadoActual} />
+                <span className="text-text-muted">No se modifica al guardar los datos</span>
+              </>
+            ) : (
+              <>
+                <span className="text-text-secondary">Estado inicial</span>
+                <EstadoMovilBadge estado="operativo" />
+                <span className="text-text-muted">Disponible · se asigna automáticamente</span>
+              </>
+            )}
           </div>
         </section>
 

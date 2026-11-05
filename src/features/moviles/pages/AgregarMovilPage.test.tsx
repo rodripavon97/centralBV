@@ -52,6 +52,9 @@ const movilCreado = {
   tipo: "Autobomba",
   marca: "Mercedes-Benz",
   modelo: "Atego 1726",
+  tipoId: "t1",
+  marcaId: "m1",
+  modeloId: "mo1",
   estado: "operativo" as const,
 };
 

@@ -45,6 +45,7 @@ export interface MovilApi {
   tipo: ItemCatalogoApi;
   marca: ItemCatalogoApi;
   modelo: ModeloApi;
+  motivoBaja?: string | null;
 }
 
 export function movilDesdeApi(m: MovilApi): MovilFlota {
@@ -55,7 +56,22 @@ export function movilDesdeApi(m: MovilApi): MovilFlota {
     tipo: m.tipo.valor,
     marca: m.marca.valor,
     modelo: m.modelo.valor,
+    tipoId: m.tipo.id,
+    marcaId: m.marca.id,
+    modeloId: m.modelo.id,
     estado: ESTADO_DESDE_API[m.estado],
+    ...(m.motivoBaja ? { motivoBaja: m.motivoBaja } : {}),
+  };
+}
+
+function cuerpoMovil(valores: ValoresMovil, opciones: { confirmarPatenteEspecial?: boolean } = {}) {
+  return {
+    denominacion: valores.denominacion.trim(),
+    patente: valores.patente.trim(),
+    tipoId: valores.tipoId,
+    marcaId: valores.marcaId,
+    modeloId: valores.modeloId,
+    ...(opciones.confirmarPatenteEspecial && { confirmarPatenteEspecial: true }),
   };
 }
 
@@ -110,17 +126,27 @@ export async function crearMovil(
   valores: ValoresMovil,
   opciones: { confirmarPatenteEspecial?: boolean } = {},
 ): Promise<MovilFlota> {
-  const r = await datosDe(
-    http.post<MovilApi>("/flota/vehiculos", {
-      denominacion: valores.denominacion.trim(),
-      patente: valores.patente.trim(),
-      tipoId: valores.tipoId,
-      marcaId: valores.marcaId,
-      modeloId: valores.modeloId,
-      ...(opciones.confirmarPatenteEspecial && { confirmarPatenteEspecial: true }),
-    }),
+  return movilDesdeApi(await datosDe(http.post<MovilApi>("/flota/vehiculos", cuerpoMovil(valores, opciones))));
+}
+
+/** Actualiza los datos generales del móvil (US48). No cambia el estado. */
+export async function actualizarMovil(
+  id: string,
+  valores: ValoresMovil,
+  opciones: { confirmarPatenteEspecial?: boolean } = {},
+): Promise<MovilFlota> {
+  return movilDesdeApi(
+    await datosDe(http.patch<MovilApi>(`/flota/vehiculos/${encodeURIComponent(id)}`, cuerpoMovil(valores, opciones))),
   );
-  return movilDesdeApi(r);
+}
+
+/** Baja definitiva (solo ADMIN). Exige motivo; el móvil queda fuera de la lista activa. */
+export async function darDeBajaMovil(id: string, motivo: string): Promise<MovilFlota> {
+  return movilDesdeApi(
+    await datosDe(
+      http.patch<MovilApi>(`/flota/vehiculos/${encodeURIComponent(id)}/baja`, { motivo: motivo.trim() }),
+    ),
+  );
 }
 
 /* ---------- Dashboard de flota (US05) ---------- */
