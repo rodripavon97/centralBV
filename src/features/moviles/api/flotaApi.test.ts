@@ -2,9 +2,11 @@ import { AxiosError, AxiosHeaders } from "axios";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErrorApi, http } from "@/lib/http";
 import {
+  actualizarMovil,
   crearItem,
   crearModelo,
   crearMovil,
+  darDeBajaMovil,
   eliminarItem,
   listarFlota,
   listarMarcas,
@@ -54,6 +56,9 @@ describe("flotaApi", () => {
           tipo: "Autobomba",
           marca: "Mercedes-Benz",
           modelo: "Atego 1726",
+          tipoId: "t1",
+          marcaId: "m1",
+          modeloId: "mo1",
           estado: "operativo",
         },
       ],
@@ -177,14 +182,57 @@ describe("flotaApi", () => {
   });
 
   it("obtiene un móvil por id, también dado de baja", async () => {
-    const get = vi.spyOn(http, "get").mockResolvedValue({ data: { ...movilApi, estado: "BAJA_DEFINITIVA" } });
-    await expect(obtenerMovil(movilApi.id)).resolves.toMatchObject({ codigo: "M-4", estado: "baja_definitiva" });
+    const get = vi.spyOn(http, "get").mockResolvedValue({
+      data: { ...movilApi, estado: "BAJA_DEFINITIVA", motivoBaja: "Fin de vida útil" },
+    });
+    await expect(obtenerMovil(movilApi.id)).resolves.toMatchObject({
+      codigo: "M-4",
+      estado: "baja_definitiva",
+      tipoId: "t1",
+      marcaId: "m1",
+      modeloId: "mo1",
+      motivoBaja: "Fin de vida útil",
+    });
     expect(get).toHaveBeenCalledWith(`/flota/vehiculos/${movilApi.id}`);
   });
 
   it("obtenerMovil devuelve ErrorApi con el status del back", async () => {
     vi.spyOn(http, "get").mockRejectedValue(errorHttp(404, { message: "El vehículo de emergencia no existe" }));
     await expect(obtenerMovil("x")).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("actualiza los datos generales del móvil (US48)", async () => {
+    const patch = vi.spyOn(http, "patch").mockResolvedValue({ data: { ...movilApi, denominacion: "M-5" } });
+    await expect(actualizarMovil(movilApi.id, valores)).resolves.toMatchObject({
+      codigo: "M-5",
+      tipoId: "t1",
+      marcaId: "m1",
+      modeloId: "mo1",
+    });
+    expect(patch).toHaveBeenCalledWith(`/flota/vehiculos/${movilApi.id}`, {
+      denominacion: "m4",
+      patente: "aj 567 st",
+      tipoId: "t1",
+      marcaId: "m1",
+      modeloId: "mo1",
+    });
+  });
+
+  it("manda confirmarPatenteEspecial al actualizar si se confirma", async () => {
+    const patch = vi.spyOn(http, "patch").mockResolvedValue({ data: movilApi });
+    await actualizarMovil(movilApi.id, valores, { confirmarPatenteEspecial: true });
+    expect(patch.mock.calls[0][1]).toEqual(expect.objectContaining({ confirmarPatenteEspecial: true }));
+  });
+
+  it("da de baja definitiva con el motivo recortado", async () => {
+    const patch = vi.spyOn(http, "patch").mockResolvedValue({
+      data: { ...movilApi, estado: "BAJA_DEFINITIVA", motivoBaja: "Fin de vida útil" },
+    });
+    await expect(darDeBajaMovil(movilApi.id, "  Fin de vida útil  ")).resolves.toMatchObject({
+      estado: "baja_definitiva",
+      motivoBaja: "Fin de vida útil",
+    });
+    expect(patch).toHaveBeenCalledWith(`/flota/vehiculos/${movilApi.id}/baja`, { motivo: "Fin de vida útil" });
   });
 
   describe("revisiones (US07)", () => {

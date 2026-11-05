@@ -55,6 +55,11 @@ export function PanelDatosGenerales({ movil }: { movil: MovilFlota }) {
         <Dato etiqueta="Tipo">{movil.tipo}</Dato>
         <Dato etiqueta="Marca">{movil.marca}</Dato>
         <Dato etiqueta="Modelo">{movil.modelo}</Dato>
+        {movil.motivoBaja && (
+          <Dato etiqueta="Motivo de baja">
+            <span className="whitespace-pre-line">{movil.motivoBaja}</span>
+          </Dato>
+        )}
       </dl>
     </Tarjeta>
   );

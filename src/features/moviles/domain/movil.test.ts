@@ -5,6 +5,7 @@ import {
   ordenarPorDenominacion,
   textoEnUso,
   validarMovil,
+  valoresDesdeMovil,
   type MovilFlota,
 } from "./movil";
 
@@ -30,6 +31,31 @@ describe("validarMovil", () => {
   });
 });
 
+describe("valoresDesdeMovil", () => {
+  it("arma los valores del formulario con los IDs de catálogo", () => {
+    expect(
+      valoresDesdeMovil({
+        id: "1",
+        codigo: "R-01",
+        patente: "AE012IJ",
+        tipo: "Rescate",
+        marca: "Ford",
+        modelo: "F-350",
+        tipoId: "t1",
+        marcaId: "m1",
+        modeloId: "mo1",
+        estado: "operativo",
+      }),
+    ).toEqual({
+      denominacion: "R-01",
+      patente: "AE012IJ",
+      tipoId: "t1",
+      marcaId: "m1",
+      modeloId: "mo1",
+    });
+  });
+});
+
 describe("campoDesdeApi y textoEnUso", () => {
   it("solo patente y denominación son campos del formulario", () => {
     expect(campoDesdeApi("patente")).toBe("patente");
@@ -52,6 +78,9 @@ describe("ordenarPorDenominacion", () => {
     tipo: "Autobomba",
     marca: "Ford",
     modelo: "F-350",
+    tipoId: "t1",
+    marcaId: "m1",
+    modeloId: "mo1",
     estado: "operativo",
   });
 

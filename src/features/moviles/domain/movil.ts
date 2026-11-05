@@ -14,7 +14,7 @@ export const ETIQUETAS_ESTADO_MOVIL: Record<EstadoMovil, string> = {
   baja_definitiva: "Baja definitiva",
 };
 
-/** Una fila de la lista de móviles. */
+/** Una fila de la lista / ficha de móviles. Los IDs de catálogo sirven para editar (US48). */
 export interface MovilFlota {
   id: string;
   codigo: string; // denominación: "M-1"
@@ -22,7 +22,11 @@ export interface MovilFlota {
   tipo: string;
   marca: string;
   modelo: string;
+  tipoId: string;
+  marcaId: string;
+  modeloId: string;
   estado: EstadoMovil;
+  motivoBaja?: string;
 }
 
 /* Orden natural: compara los números como números, así "M-2" va antes que
@@ -68,6 +72,17 @@ export const VALORES_MOVIL_VACIOS: ValoresMovil = {
   marcaId: "",
   modeloId: "",
 };
+
+/** Valores del formulario a partir de un móvil cargado (US48). */
+export function valoresDesdeMovil(m: MovilFlota): ValoresMovil {
+  return {
+    denominacion: m.codigo,
+    patente: m.patente,
+    tipoId: m.tipoId,
+    marcaId: m.marcaId,
+    modeloId: m.modeloId,
+  };
+}
 
 /** Textos de error de Figma (US04 · Alta · campos obligatorios y duplicado). */
 export const MENSAJES_MOVIL = {

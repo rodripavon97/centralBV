@@ -24,6 +24,7 @@ import EditarSolicitudPage from "@/features/constancias/pages/EditarSolicitudPag
 import GenerarConstanciaPage from "@/features/constancias/pages/GenerarConstanciaPage";
 import MovilesPage from "@/features/moviles/pages/MovilesPage";
 import AgregarMovilPage from "@/features/moviles/pages/AgregarMovilPage";
+import EditarMovilPage from "@/features/moviles/pages/EditarMovilPage";
 import FichaMovilPage from "@/features/moviles/pages/FichaMovilPage";
 import RegistrarRevisionPage from "@/features/moviles/pages/RegistrarRevisionPage";
 import type { ResultadoRevision } from "@/features/moviles/domain/revision";
@@ -195,6 +196,16 @@ const fichaMovilRoute = createRoute({
   component: FichaMovilPage,
 });
 
+// US48: edición de datos generales. Solo AUTOMOTORES (ADMIN siempre).
+const editarMovilRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/moviles/$id/editar",
+  beforeLoad: () => {
+    if (!tieneRol("AUTOMOTORES")) throw redirect({ to: "/moviles" });
+  },
+  component: EditarMovilPage,
+});
+
 // US07: revisión del móvil. Cualquier usuario con sesión la registra (lo valida el back).
 const revisionMovilRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -263,6 +274,7 @@ const routeTree = rootRoute.addChildren([
     movilesRoute,
     nuevoMovilRoute,
     fichaMovilRoute,
+    editarMovilRoute,
     revisionMovilRoute,
     usuariosRoute,
     nuevoUsuarioRoute,
@@ -292,6 +304,7 @@ declare module "@tanstack/history" {
     entregada?: string; // número de la solicitud recién entregada (US12)
     sesionVencida?: boolean; // la sesión expiró y hay que avisarlo en el login
     movilCreado?: string; // denominación del móvil recién creado (US04)
+    movilEditado?: boolean; // aviso al volver a la ficha tras editar (US48)
     listaMoviles?: BusquedaMoviles; // búsqueda de la lista, para volver desde la ficha (US06)
     revisionGuardada?: { codigo: string; resultado: ResultadoRevision }; // aviso al volver a la ficha (US07)
     usuarioCreado?: string; // correo del usuario recién creado

@@ -6,13 +6,20 @@ import { crearRouter } from "@/app/router";
 import { guardarToken } from "@/features/auth/session";
 import { ErrorApi } from "@/lib/http";
 import { tokenDePrueba } from "@/test/token";
-import { listarMoviles, listarRevisiones, obtenerMovil, obtenerRevision } from "../api/flotaApi";
+import { darDeBajaMovil, listarMoviles, listarRevisiones, obtenerMovil, obtenerRevision } from "../api/flotaApi";
 import type { RevisionMovil } from "../domain/revision";
 import type { MovilFlota } from "../domain/movil";
 
 vi.mock("../api/flotaApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api/flotaApi")>();
-  return { ...actual, obtenerMovil: vi.fn(), listarMoviles: vi.fn(), listarRevisiones: vi.fn(), obtenerRevision: vi.fn() };
+  return {
+    ...actual,
+    obtenerMovil: vi.fn(),
+    listarMoviles: vi.fn(),
+    listarRevisiones: vi.fn(),
+    obtenerRevision: vi.fn(),
+    darDeBajaMovil: vi.fn(),
+  };
 });
 
 const ID = "44444444-4444-4444-8444-444444444444";
@@ -25,6 +32,9 @@ const r01: MovilFlota = {
   tipo: "Rescate",
   marca: "Ford",
   modelo: "F-350",
+  tipoId: "t1",
+  marcaId: "m1",
+  modeloId: "mo1",
   estado: "observaciones",
 };
 
@@ -144,10 +154,12 @@ describe("FichaMovilPage (US06)", () => {
   });
 
   it("un móvil dado de baja abre con el badge Baja definitiva", async () => {
-    vi.mocked(obtenerMovil).mockResolvedValue({ ...r01, estado: "baja_definitiva" });
+    vi.mocked(obtenerMovil).mockResolvedValue({ ...r01, estado: "baja_definitiva", motivoBaja: "Fin de vida útil" });
     renderApp();
 
     expect(await screen.findByText("Baja definitiva")).toBeInTheDocument();
+    const datos = screen.getByRole("heading", { name: "Datos del móvil" }).closest("section")!;
+    expect(within(datos).getByText("Motivo de baja").nextSibling).toHaveTextContent("Fin de vida útil");
   });
 
   it("← Móviles vuelve a la lista con la misma búsqueda", async () => {
@@ -292,5 +304,84 @@ describe("FichaMovilPage · revisión (US07)", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Reintentar" }));
     expect(await screen.findByRole("region", { name: "Resumen de la revisión" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "R-01" })).toBeInTheDocument();
+  });
+});
+
+describe("FichaMovilPage · edición y baja (US48)", () => {
+  it("COMUN no ve Editar", async () => {
+    vi.mocked(obtenerMovil).mockResolvedValue(r01);
+    guardarToken(tokenDePrueba(["COMUN"]));
+    renderApp();
+    await screen.findByRole("heading", { level: 1, name: "R-01" });
+    expect(screen.queryByRole("link", { name: /Editar/ })).not.toBeInTheDocument();
+  });
+
+  it("AUTOMOTORES ve Editar hacia /editar", async () => {
+    vi.mocked(obtenerMovil).mockResolvedValue(r01);
+    guardarToken(tokenDePrueba(["AUTOMOTORES"]));
+    renderApp();
+    const editar = await screen.findByRole("link", { name: /Editar/ });
+    expect(editar).toHaveAttribute("href", `/moviles/${ID}/editar`);
+    expect(screen.queryByRole("button", { name: /Baja definitiva/ })).not.toBeInTheDocument();
+  });
+
+  it("ADMIN ve Editar y Baja definitiva", async () => {
+    vi.mocked(obtenerMovil).mockResolvedValue(r01);
+    guardarToken(tokenDePrueba(["ADMIN"]));
+    renderApp();
+    expect(await screen.findByRole("button", { name: /Baja definitiva/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Editar/ })).toBeInTheDocument();
+  });
+
+  it("no ofrece editar ni baja si el móvil ya está dado de baja", async () => {
+    guardarToken(tokenDePrueba(["ADMIN"]));
+    vi.mocked(obtenerMovil).mockResolvedValue({ ...r01, estado: "baja_definitiva" });
+    renderApp();
+
+    await screen.findByText("Baja definitiva");
+    expect(screen.queryByRole("link", { name: /Editar/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Baja definitiva/ })).not.toBeInTheDocument();
+  });
+
+  it("da de baja con motivo y actualiza la ficha", async () => {
+    guardarToken(tokenDePrueba(["ADMIN"]));
+    vi.mocked(obtenerMovil).mockResolvedValue(r01);
+    vi.mocked(darDeBajaMovil).mockResolvedValue({
+      ...r01,
+      estado: "baja_definitiva",
+      motivoBaja: "Fin de vida útil",
+    });
+    renderApp();
+
+    await userEvent.click(await screen.findByRole("button", { name: /Baja definitiva/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("button", { name: /Sí, dar de baja/ })).toBeDisabled();
+
+    await userEvent.type(within(dialog).getByLabelText(/Motivo de la baja/), "  Fin de vida útil  ");
+    await userEvent.click(within(dialog).getByRole("button", { name: /Sí, dar de baja/ }));
+
+    expect(darDeBajaMovil).toHaveBeenCalledWith(ID, "Fin de vida útil");
+    expect(await screen.findByText("El móvil quedó dado de baja definitiva.")).toBeInTheDocument();
+    expect(screen.getByText("Baja definitiva")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Baja definitiva/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Registrar revisión/ })).not.toBeInTheDocument();
+    const datos = screen.getByRole("heading", { name: "Datos del móvil" }).closest("section")!;
+    expect(within(datos).getByText("Motivo de baja").nextSibling).toHaveTextContent("Fin de vida útil");
+  });
+
+  it("si la baja falla, el diálogo queda abierto con el error", async () => {
+    guardarToken(tokenDePrueba(["ADMIN"]));
+    vi.mocked(obtenerMovil).mockResolvedValue(r01);
+    vi.mocked(darDeBajaMovil).mockRejectedValue(new ErrorApi(403, "Solo el administrador puede dar de baja"));
+    renderApp();
+
+    await userEvent.click(await screen.findByRole("button", { name: /Baja definitiva/ }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText(/Motivo de la baja/), "Motivo");
+    await userEvent.click(within(dialog).getByRole("button", { name: /Sí, dar de baja/ }));
+
+    expect(await within(dialog).findByText("Solo el administrador puede dar de baja")).toBeInTheDocument();
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Baja definitiva/ })).toBeInTheDocument();
   });
 });

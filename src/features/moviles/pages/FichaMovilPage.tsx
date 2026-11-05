@@ -1,13 +1,17 @@
+import { useState } from "react";
 import { Link, getRouteApi, useLocation } from "@tanstack/react-router";
-import { ArrowLeft, CircleAlert, CircleCheck, CircleX, ClipboardCheck, RotateCcw, SearchX } from "lucide-react";
+import { ArrowLeft, Ban, CircleAlert, CircleCheck, CircleX, ClipboardCheck, Pencil, RotateCcw, SearchX } from "lucide-react";
 import { Alert } from "@/components/centralbv/Alert";
 import { Button, ButtonLink } from "@/components/centralbv/Button";
 import { EmptyState } from "@/components/centralbv/EmptyState";
 import { focus } from "@/components/centralbv/estilos";
 import { useConsulta } from "@/features/constancias/hooks/useConsulta";
+import { leerRoles, tieneRol } from "@/features/auth/session";
 import { ErrorApi } from "@/lib/http";
-import { obtenerMovil } from "../api/flotaApi";
+import { darDeBajaMovil, obtenerMovil } from "../api/flotaApi";
+import BajaMovilDialog from "../components/BajaMovilDialog";
 import { PESTANAS_FICHA, idPanel, idPestana, type PestanaFicha } from "../domain/busquedaMoviles";
+import type { MovilFlota } from "../domain/movil";
 import { formatearPatente } from "../domain/patente";
 import { textoRevisionGuardada } from "../domain/revision";
 import EstadoMovilBadge from "../components/EstadoMovilBadge";
@@ -24,6 +28,7 @@ const ICONO_AVISO = { operativo: CircleCheck, observaciones: CircleAlert, fuera_
  * Ficha técnica de un móvil (US06 · Figma S4): datos generales, inventario y revisiones.
  * US07: botón "Registrar revisión" (cualquier usuario, salvo móviles dados de baja), el historial
  * de revisiones con el detalle de la elegida y el aviso "Revisión guardada…" al volver del formulario.
+ * US48: edición de datos generales (AUTOMOTORES) y baja definitiva (solo ADMIN).
  * La pestaña y la revisión elegida van en la URL (?pestana=&revision=), así el Atrás y los links
  * compartidos abren la misma vista.
  * Un id inexistente (404) o inválido (400) muestra "Móvil no encontrado".
@@ -34,9 +39,15 @@ export default function FichaMovilPage() {
   const navigate = ruta.useNavigate();
   const volverA = useLocation({ select: (l) => l.state.listaMoviles });
   const revisionGuardada = useLocation({ select: (l) => l.state.revisionGuardada });
+  const movilEditado = useLocation({ select: (l) => l.state.movilEditado });
   const pestana: PestanaFicha = search.pestana ?? "datos";
 
   const { consulta, reintentar } = useConsulta(`movil:${id}`, () => obtenerMovil(id));
+  // Tras baja (o otra mutación) se muestra la versión actualizada sin volver a pedirla.
+  const [actualizado, setActualizado] = useState<MovilFlota>();
+  const [dandoDeBaja, setDandoDeBaja] = useState(false);
+  const [bajaOk, setBajaOk] = useState(false);
+
   const noEncontrado =
     consulta.estado === "error" && consulta.error instanceof ErrorApi && [400, 404].includes(consulta.error.status);
 
@@ -100,7 +111,11 @@ export default function FichaMovilPage() {
     );
   }
 
-  const movil = consulta.estado === "listo" ? consulta.datos : undefined;
+  const cargado = consulta.estado === "listo" ? consulta.datos : undefined;
+  const movil = actualizado?.id === id ? actualizado : cargado;
+  const activo = movil && movil.estado !== "baja_definitiva";
+  const puedeEditar = tieneRol("AUTOMOTORES");
+  const esAdmin = leerRoles().includes("ADMIN");
 
   return (
     <div className="flex flex-col gap-6">
@@ -123,13 +138,39 @@ export default function FichaMovilPage() {
             {movil ? `${movil.tipo} · ${movil.marca} ${movil.modelo} · ${formatearPatente(movil.patente)}` : "Cargando…"}
           </p>
         </div>
-        {movil && movil.estado !== "baja_definitiva" && (
-          <ButtonLink to="/moviles/$id/revision" params={{ id }} variant="primary">
-            <ClipboardCheck size={16} strokeWidth={1.5} aria-hidden />
-            Registrar revisión
-          </ButtonLink>
+        {activo && (
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3 [&>*]:w-full sm:[&>*]:w-auto">
+            {puedeEditar && (
+              <ButtonLink to="/moviles/$id/editar" params={{ id }}>
+                <Pencil size={16} strokeWidth={1.5} aria-hidden />
+                Editar
+              </ButtonLink>
+            )}
+            <ButtonLink to="/moviles/$id/revision" params={{ id }} variant="primary" className="order-first sm:order-none">
+              <ClipboardCheck size={16} strokeWidth={1.5} aria-hidden />
+              Registrar revisión
+            </ButtonLink>
+            {esAdmin && (
+              <Button variant="danger" onClick={() => setDandoDeBaja(true)}>
+                <Ban size={16} strokeWidth={1.5} aria-hidden />
+                Baja definitiva
+              </Button>
+            )}
+          </div>
         )}
       </header>
+
+      {movilEditado && !bajaOk && (
+        <Alert tone="ok" icon={CircleCheck} role="status">
+          Cambios guardados.
+        </Alert>
+      )}
+
+      {bajaOk && (
+        <Alert tone="ok" icon={CircleCheck} role="status">
+          El móvil quedó dado de baja definitiva.
+        </Alert>
+      )}
 
       {revisionGuardada && (
         <Alert tone={TONO_AVISO[revisionGuardada.resultado]} icon={ICONO_AVISO[revisionGuardada.resultado]} role="status">
@@ -153,6 +194,19 @@ export default function FichaMovilPage() {
           )}
         </div>
       ))}
+
+      {movil && (
+        <BajaMovilDialog
+          codigo={movil.codigo}
+          abierto={dandoDeBaja}
+          onCerrar={() => setDandoDeBaja(false)}
+          onConfirmar={async (motivo) => {
+            setActualizado(await darDeBajaMovil(movil.id, motivo));
+            setBajaOk(true);
+            setDandoDeBaja(false);
+          }}
+        />
+      )}
     </div>
   );
 }
