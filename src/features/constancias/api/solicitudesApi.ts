@@ -9,6 +9,7 @@ import type {
 } from "@/types/dominio";
 import { ErrorApi, aErrorApi, http } from "@/lib/http";
 import type { DatosSolicitud } from "../domain/validacion";
+import type { DatosEntrega } from "../domain/validacionEntrega";
 import type { DatosPago } from "../domain/validacionPago";
 
 /* Llamadas a /solicitudes de centralBV_back (US08 a US13).
@@ -315,6 +316,11 @@ export async function generarConstancia(id: string, observaciones: string): Prom
 /** US44: REALIZADA → FIRMADA, una vez firmada la hoja 1 en papel. */
 export async function firmarSolicitud(id: string): Promise<Solicitud> {
   return desdeApi(await datosDe(http.patch<SolicitudApi>(`/solicitudes/${encodeURIComponent(id)}/firmar`)));
+}
+
+/** US12: FIRMADA → RETIRADA, con los datos de quien retira. El back exige el arancel abonado o exento. */
+export async function marcarEntregada(id: string, datos: DatosEntrega): Promise<Solicitud> {
+  return desdeApi(await datosDe(http.patch<SolicitudApi>(`/solicitudes/${encodeURIComponent(id)}/entregar`, datos)));
 }
 
 /** Descarga el PDF de una solicitud ya generada (REALIZADA, FIRMADA o RETIRADA). */

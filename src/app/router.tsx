@@ -289,6 +289,7 @@ declare module "@tanstack/history" {
   interface HistoryState {
     creada?: string; // número de la solicitud recién creada
     editada?: boolean;
+    entregada?: string; // número de la solicitud recién entregada (US12)
     sesionVencida?: boolean; // la sesión expiró y hay que avisarlo en el login
     movilCreado?: string; // denominación del móvil recién creado (US04)
     listaMoviles?: BusquedaMoviles; // búsqueda de la lista, para volver desde la ficha (US06)

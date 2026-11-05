@@ -34,6 +34,7 @@ export default function SolicitudesPage() {
   const search = ruta.useSearch();
   const navigate = ruta.useNavigate();
   const creada = useLocation({ select: (l) => l.state.creada });
+  const entregada = useLocation({ select: (l) => l.state.entregada });
 
   // US47: la pestaña Historial muestra las entregadas; Activas, el resto (US09).
   const historial = search.vista === "historial";
@@ -107,6 +108,11 @@ export default function SolicitudesPage() {
       {creada && (
         <Alert tone="ok" icon={CircleCheck} role="status">
           Solicitud <span className="font-mono">{creada}</span> creada con estado Pendiente.
+        </Alert>
+      )}
+      {entregada && (
+        <Alert tone="ok" icon={CircleCheck} role="status">
+          Solicitud N.º <span className="font-mono">{entregada}</span> entregada. Pasó al historial.
         </Alert>
       )}
 

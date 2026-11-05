@@ -8,6 +8,7 @@ import {
   generarConstancia,
   listarHistorial,
   listarSolicitudes,
+  marcarEntregada,
   obtenerSolicitud,
   registrarPago,
   type SolicitudApi,
@@ -173,6 +174,26 @@ describe("solicitudesApi", () => {
 
     expect(patch).toHaveBeenCalledWith(`/solicitudes/${solicitudApi.id}/firmar`);
     expect(s.estado).toBe("firmada");
+  });
+
+  it("marca la solicitud como entregada en /entregar con los datos de quien retira (US12)", async () => {
+    const patch = vi.spyOn(http, "patch").mockResolvedValue({
+      data: {
+        ...solicitudApi,
+        estado: "RETIRADA",
+        retiradoEn: "2026-10-17T14:05:00+00:00",
+        retiradoPorNombre: "María López",
+        retiradoPorDni: "30112456",
+      },
+    });
+
+    const s = await marcarEntregada(solicitudApi.id, { nombreCompleto: "María López", dni: "30112456" });
+
+    expect(patch).toHaveBeenCalledWith(`/solicitudes/${solicitudApi.id}/entregar`, {
+      nombreCompleto: "María López",
+      dni: "30112456",
+    });
+    expect(s).toMatchObject({ estado: "entregada", retiradoPorNombre: "María López" });
   });
 
   it("devuelve null si la solicitud no existe", async () => {
