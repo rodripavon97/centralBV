@@ -1,12 +1,12 @@
 import { useId, useState, type ReactNode } from "react";
 import { Link, getRouteApi, useLocation, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Ban, CircleAlert, CircleCheck, CircleX, FileText, Lock, PackageCheck, Pencil, RotateCcw, SearchX } from "lucide-react";
+import { ArrowLeft, Ban, CircleAlert, CircleCheck, CircleX, FileText, Loader2, Lock, PackageCheck, Pencil, PenLine, RotateCcw, SearchX } from "lucide-react";
 import type { Solicitud } from "@/types/dominio";
 import { Button, ButtonLink } from "@/components/centralbv/Button";
 import { Alert } from "@/components/centralbv/Alert";
 import { EmptyState } from "@/components/centralbv/EmptyState";
 import { focus } from "@/components/centralbv/estilos";
-import { cancelarSolicitud, marcarEntregada, obtenerSolicitud, registrarPago } from "../api/solicitudesApi";
+import { cancelarSolicitud, firmarSolicitud, marcarEntregada, obtenerSolicitud, registrarPago } from "../api/solicitudesApi";
 import { DESTINOS_CONSTANCIA, METODOS_PAGO, TIPOS_SINIESTRO, formatearDni, formatearFecha, formatearHora, formatearInstante, formatearMonto } from "../domain/formato";
 import { entregaBloqueada, estadoPagoDe, puedeRegistrarPago } from "../domain/pago";
 import { useConsulta } from "../hooks/useConsulta";
@@ -79,10 +79,30 @@ function Detalle({
   const [registrandoPago, setRegistrandoPago] = useState(false);
   const [pagoGuardado, setPagoGuardado] = useState(false);
   const [entregando, setEntregando] = useState(false);
+  const [firmando, setFirmando] = useState(false);
+  const [firmadaOk, setFirmadaOk] = useState(false);
+  const [errorFirma, setErrorFirma] = useState<string>();
   const pendiente = s.estado === "pendiente";
+  const constanciaGenerada = s.estado === "constancia_generada";
   const firmada = s.estado === "firmada";
-  const conConstancia = s.estado === "constancia_generada" || s.estado === "firmada" || s.estado === "entregada";
+  const conConstancia = constanciaGenerada || firmada || s.estado === "entregada";
+  const verConstanciaSecundario = constanciaGenerada || firmada;
   const { damnificado: d, siniestro: sn, constancia: c } = s;
+
+  // US44: se marca una vez que la hoja 1 impresa ya tiene la firma. Habilita la entrega.
+  const firmar = async () => {
+    setFirmando(true);
+    setErrorFirma(undefined);
+    setFirmadaOk(false);
+    try {
+      onActualizada(await firmarSolicitud(s.id));
+      setFirmadaOk(true);
+    } catch (err) {
+      setErrorFirma(err instanceof Error ? err.message : "No se pudo marcar como firmada");
+    } finally {
+      setFirmando(false);
+    }
+  };
 
   // US13: solo se edita o cancela una solicitud pendiente.
   const bloqueo: Partial<Record<Solicitud["estado"], string>> = {
@@ -143,12 +163,32 @@ function Detalle({
             <ButtonLink
               to="/solicitudes/$id/generar"
               params={{ id: s.id }}
-              variant={firmada ? undefined : "primary"}
-              className={firmada ? undefined : "order-first sm:order-none"}
+              variant={verConstanciaSecundario ? undefined : "primary"}
+              className={verConstanciaSecundario ? undefined : "order-first sm:order-none"}
             >
               <FileText size={16} strokeWidth={1.5} aria-hidden />
               Ver constancia
             </ButtonLink>
+          )}
+          {constanciaGenerada && (
+            <Button
+              variant="primary"
+              className="order-first sm:order-none"
+              disabled={firmando}
+              onClick={() => void firmar()}
+            >
+              {firmando ? (
+                <>
+                  <Loader2 size={16} strokeWidth={1.5} className="animate-spin" aria-hidden />
+                  Marcando…
+                </>
+              ) : (
+                <>
+                  <PenLine size={16} strokeWidth={1.5} aria-hidden />
+                  Marcar como firmada
+                </>
+              )}
+            </Button>
           )}
           {/* US12: con el arancel pendiente se ve deshabilitado y el aviso de abajo explica por qué. */}
           {firmada && (
@@ -168,6 +208,16 @@ function Detalle({
       {editada && (
         <Alert tone="ok" icon={CircleCheck} role="status">
           Cambios guardados.
+        </Alert>
+      )}
+      {firmadaOk && (
+        <Alert tone="ok" icon={CircleCheck} role="status">
+          Constancia marcada como firmada. Ya se puede entregar.
+        </Alert>
+      )}
+      {errorFirma && (
+        <Alert tone="danger" icon={CircleAlert} role="alert">
+          {errorFirma}
         </Alert>
       )}
       {pagoGuardado && (

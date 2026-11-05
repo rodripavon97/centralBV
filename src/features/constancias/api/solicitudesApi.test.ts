@@ -2,6 +2,7 @@ import { AxiosError, AxiosHeaders } from "axios";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErrorApi, http } from "@/lib/http";
 import {
+  cancelarSolicitud,
   crearSolicitud,
   descargarConstanciaPdf,
   firmarSolicitud,
@@ -174,6 +175,17 @@ describe("solicitudesApi", () => {
 
     expect(patch).toHaveBeenCalledWith(`/solicitudes/${solicitudApi.id}/firmar`);
     expect(s.estado).toBe("firmada");
+  });
+
+  it("cancela la solicitud en /cancelar con el motivo (US13)", async () => {
+    const patch = vi.spyOn(http, "patch").mockResolvedValue({
+      data: { ...solicitudApi, estado: "CANCELADA", motivoCancelacion: "Pedido duplicado" },
+    });
+
+    const s = await cancelarSolicitud(solicitudApi.id, "  Pedido duplicado  ");
+
+    expect(patch).toHaveBeenCalledWith(`/solicitudes/${solicitudApi.id}/cancelar`, { motivo: "Pedido duplicado" });
+    expect(s).toMatchObject({ estado: "cancelada", motivoCancelacion: "Pedido duplicado" });
   });
 
   it("marca la solicitud como entregada en /entregar con los datos de quien retira (US12)", async () => {
