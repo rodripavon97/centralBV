@@ -70,9 +70,11 @@ centralBV/
 │  │  │  ├─ domain/
 │  │  │  │  ├─ busqueda.ts          Parámetros de la URL del listado
 │  │  │  │  ├─ formato.ts           Etiquetas, DNI y fechas
-│  │  │  │  └─ validacion.ts        Validación del formulario de solicitud
+│  │  │  │  ├─ validacion.ts        Validación del formulario de solicitud
+│  │  │  │  └─ validacionEntrega.ts Validación de los datos de quien retira
 │  │  │  ├─ components/             EstadoBadge, SolicitudForm, CancelarSolicitudDialog,
-│  │  │  │                          HojaConstancia, HojaEscalada, ImprimirConstanciaDialog
+│  │  │  │                          HojaConstancia, HojaEscalada, ImprimirConstanciaDialog,
+│  │  │  │                          MarcarEntregadaDialog
 │  │  │  ├─ hooks/
 │  │  │  │  └─ useConsulta.ts       Carga asíncrona con estados cargando/error/listo
 │  │  │  └─ pages/                  Listado, alta, detalle, edición y generación

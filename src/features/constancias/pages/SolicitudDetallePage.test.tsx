@@ -5,15 +5,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { crearRouter } from "@/app/router";
 import { guardarToken } from "@/features/auth/session";
 import type { Solicitud } from "@/types/dominio";
-import { obtenerSolicitud, registrarPago } from "../api/solicitudesApi";
+import { listarSolicitudes, marcarEntregada, obtenerSolicitud, registrarPago } from "../api/solicitudesApi";
 
 vi.mock("../api/solicitudesApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api/solicitudesApi")>();
-  return { ...actual, obtenerSolicitud: vi.fn(), registrarPago: vi.fn() };
+  return {
+    ...actual,
+    obtenerSolicitud: vi.fn(),
+    registrarPago: vi.fn(),
+    marcarEntregada: vi.fn(),
+    listarSolicitudes: vi.fn(),
+  };
 });
 
 const obtenerMock = vi.mocked(obtenerSolicitud);
 const pagoMock = vi.mocked(registrarPago);
+const entregarMock = vi.mocked(marcarEntregada);
+const listarMock = vi.mocked(listarSolicitudes);
 
 const base: Solicitud = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -62,6 +70,128 @@ beforeEach(() => {
   guardarToken(tokenVigente());
   obtenerMock.mockReset();
   pagoMock.mockReset();
+  entregarMock.mockReset();
+  listarMock.mockReset();
+});
+
+describe("SolicitudDetallePage · entrega (US12)", () => {
+  const entregada: Solicitud = {
+    ...abonada,
+    estado: "entregada",
+    retiradoEn: "2026-10-17T14:05:00+00:00",
+    retiradoPorNombre: "María López",
+    retiradoPorDni: "30112456",
+  };
+
+  it("con el arancel pendiente el botón queda deshabilitado", async () => {
+    obtenerMock.mockResolvedValue(base);
+
+    renderApp();
+
+    expect(await screen.findByRole("button", { name: "Marcar como entregada" })).toBeDisabled();
+    expect(screen.getByText(/Entrega bloqueada/)).toBeInTheDocument();
+  });
+
+  it("con el arancel exento se puede entregar", async () => {
+    obtenerMock.mockResolvedValue({ ...base, abono: { estado: "exento", motivoExento: "Acción social", fechaPago: "x" } });
+
+    renderApp();
+
+    expect(await screen.findByRole("button", { name: "Marcar como entregada" })).toBeEnabled();
+  });
+
+  it.each(["pendiente", "constancia_generada", "entregada", "cancelada"] as const)(
+    "no ofrece entregar una solicitud en estado %s",
+    async (estado) => {
+      obtenerMock.mockResolvedValue({ ...abonada, estado });
+
+      renderApp();
+
+      await screen.findByRole("heading", { name: /Solicitud N.º/ });
+      expect(screen.queryByRole("button", { name: "Marcar como entregada" })).not.toBeInTheDocument();
+    },
+  );
+
+  it("confirma con los datos precargados y vuelve a la lista avisando que pasó al historial", async () => {
+    obtenerMock.mockResolvedValue(abonada);
+    entregarMock.mockResolvedValue(entregada);
+    listarMock.mockResolvedValue({ items: [], total: 0, pagina: 1, paginas: 0 });
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(await screen.findByRole("button", { name: "Marcar como entregada" }));
+    const modal = await screen.findByRole("dialog", { name: "Marcar como entregada" });
+    expect(within(modal).getByLabelText(/^Retira/)).toHaveValue("Roberto Acosta");
+    expect(within(modal).getByLabelText(/DNI de quien retira/)).toHaveValue("30.123.456");
+
+    await user.click(within(modal).getByRole("button", { name: "Confirmar entrega" }));
+
+    expect(entregarMock).toHaveBeenCalledWith(base.id, { nombreCompleto: "Roberto Acosta", dni: "30123456" });
+    expect(await screen.findByText(/entregada\. Pasó al historial\./)).toHaveTextContent(
+      "Solicitud N.º SOL-0482 entregada. Pasó al historial.",
+    );
+  });
+
+  it("registra a otra persona si retira alguien distinto del damnificado", async () => {
+    obtenerMock.mockResolvedValue(abonada);
+    entregarMock.mockResolvedValue(entregada);
+    listarMock.mockResolvedValue({ items: [], total: 0, pagina: 1, paginas: 0 });
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(await screen.findByRole("button", { name: "Marcar como entregada" }));
+    const modal = await screen.findByRole("dialog", { name: "Marcar como entregada" });
+    const nombre = within(modal).getByLabelText(/^Retira/);
+    const dni = within(modal).getByLabelText(/DNI de quien retira/);
+    await user.clear(nombre);
+    await user.type(nombre, "María López");
+    await user.clear(dni);
+    await user.type(dni, "30112456");
+    await user.click(within(modal).getByRole("button", { name: "Confirmar entrega" }));
+
+    expect(entregarMock).toHaveBeenCalledWith(base.id, { nombreCompleto: "María López", dni: "30112456" });
+  });
+
+  it("no envía si faltan los datos de quien retira y marca el primer error", async () => {
+    obtenerMock.mockResolvedValue(abonada);
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(await screen.findByRole("button", { name: "Marcar como entregada" }));
+    const modal = await screen.findByRole("dialog", { name: "Marcar como entregada" });
+    await user.clear(within(modal).getByLabelText(/^Retira/));
+    await user.clear(within(modal).getByLabelText(/DNI de quien retira/));
+    await user.click(within(modal).getByRole("button", { name: "Confirmar entrega" }));
+
+    expect(within(modal).getByText("Ingresá el nombre de quien retira")).toBeInTheDocument();
+    expect(within(modal).getByText("Ingresá el DNI de quien retira")).toBeInTheDocument();
+    expect(within(modal).getByLabelText(/^Retira/)).toHaveFocus();
+    expect(entregarMock).not.toHaveBeenCalled();
+  });
+
+  it("deja el modal abierto con el error si el back rechaza la entrega", async () => {
+    obtenerMock.mockResolvedValue(abonada);
+    entregarMock.mockRejectedValue(new Error("Solo se pueden entregar solicitudes firmadas con abono registrado"));
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(await screen.findByRole("button", { name: "Marcar como entregada" }));
+    const modal = await screen.findByRole("dialog", { name: "Marcar como entregada" });
+    await user.click(within(modal).getByRole("button", { name: "Confirmar entrega" }));
+
+    expect(await within(modal).findByRole("alert")).toHaveTextContent(/firmadas con abono registrado/);
+    expect(within(modal).getByRole("button", { name: "Confirmar entrega" })).toBeEnabled();
+  });
+
+  it("una solicitud entregada muestra cuándo y quién la retiró", async () => {
+    obtenerMock.mockResolvedValue(entregada);
+
+    renderApp();
+
+    const cierre = await screen.findByRole("region", { name: "Cierre" });
+    expect(within(cierre).getByText("17/10/2026 11:05")).toBeInTheDocument();
+    expect(within(cierre).getByText("María López · DNI 30.112.456")).toBeInTheDocument();
+  });
 });
 
 describe("SolicitudDetallePage · arancel (US14)", () => {

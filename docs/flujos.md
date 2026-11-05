@@ -143,6 +143,13 @@ Desde el detalle de una solicitud pendiente, **Generar constancia** abre `/solic
 - En el visor de una solicitud REALIZADA aparece **Marcar como firmada**. Se usa cuando la hoja 1 impresa ya tiene la firma.
 - Llama a `PATCH /solicitudes/:id/firmar` (REALIZADA → FIRMADA). La pantalla queda en el visor con el estado actualizado y el aviso "Constancia marcada como firmada. Ya se puede entregar."
 
+### Marcar como entregada (US12)
+
+- En el detalle de una solicitud FIRMADA aparece **Marcar como entregada**. Con el arancel pendiente queda deshabilitado (RN/02) y se ve el aviso "Entrega bloqueada".
+- El botón abre un diálogo de confirmación con el nombre y el DNI de quien retira. Los dos son obligatorios y se precargan con los datos del damnificado.
+- Al confirmar se llama a `PATCH /solicitudes/:id/entregar` (FIRMADA → RETIRADA). La fecha y la hora las registra el back. La pantalla vuelve a la lista con el aviso "Solicitud N.º … entregada. Pasó al historial."
+- Pendiente: el back todavía no guarda qué usuario registró la entrega.
+
 ### Historial de solicitudes (US47)
 
 - `/solicitudes` tiene dos pestañas: **Activas** (US09) e **Historial** (`?vista=historial`).

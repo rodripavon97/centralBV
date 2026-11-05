@@ -1,17 +1,18 @@
 import { useId, useState, type ReactNode } from "react";
 import { Link, getRouteApi, useLocation, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Ban, CircleAlert, CircleCheck, CircleX, FileText, Lock, Pencil, RotateCcw, SearchX } from "lucide-react";
+import { ArrowLeft, Ban, CircleAlert, CircleCheck, CircleX, FileText, Lock, PackageCheck, Pencil, RotateCcw, SearchX } from "lucide-react";
 import type { Solicitud } from "@/types/dominio";
 import { Button, ButtonLink } from "@/components/centralbv/Button";
 import { Alert } from "@/components/centralbv/Alert";
 import { EmptyState } from "@/components/centralbv/EmptyState";
 import { focus } from "@/components/centralbv/estilos";
-import { cancelarSolicitud, obtenerSolicitud, registrarPago } from "../api/solicitudesApi";
-import { DESTINOS_CONSTANCIA, METODOS_PAGO, TIPOS_SINIESTRO, formatearDni, formatearFecha, formatearHora, formatearMonto } from "../domain/formato";
+import { cancelarSolicitud, marcarEntregada, obtenerSolicitud, registrarPago } from "../api/solicitudesApi";
+import { DESTINOS_CONSTANCIA, METODOS_PAGO, TIPOS_SINIESTRO, formatearDni, formatearFecha, formatearHora, formatearInstante, formatearMonto } from "../domain/formato";
 import { entregaBloqueada, estadoPagoDe, puedeRegistrarPago } from "../domain/pago";
 import { useConsulta } from "../hooks/useConsulta";
 import CancelarSolicitudDialog from "../components/CancelarSolicitudDialog";
 import EstadoBadge from "../components/EstadoBadge";
+import MarcarEntregadaDialog from "../components/MarcarEntregadaDialog";
 import PagoBadge from "../components/PagoBadge";
 import RegistrarPagoDialog from "../components/RegistrarPagoDialog";
 
@@ -77,7 +78,9 @@ function Detalle({
   const [cancelando, setCancelando] = useState(false);
   const [registrandoPago, setRegistrandoPago] = useState(false);
   const [pagoGuardado, setPagoGuardado] = useState(false);
+  const [entregando, setEntregando] = useState(false);
   const pendiente = s.estado === "pendiente";
+  const firmada = s.estado === "firmada";
   const conConstancia = s.estado === "constancia_generada" || s.estado === "firmada" || s.estado === "entregada";
   const { damnificado: d, siniestro: sn, constancia: c } = s;
 
@@ -140,12 +143,24 @@ function Detalle({
             <ButtonLink
               to="/solicitudes/$id/generar"
               params={{ id: s.id }}
-              variant="primary"
-              className="order-first sm:order-none"
+              variant={firmada ? undefined : "primary"}
+              className={firmada ? undefined : "order-first sm:order-none"}
             >
               <FileText size={16} strokeWidth={1.5} aria-hidden />
               Ver constancia
             </ButtonLink>
+          )}
+          {/* US12: con el arancel pendiente se ve deshabilitado y el aviso de abajo explica por qué. */}
+          {firmada && (
+            <Button
+              variant="primary"
+              className="order-first sm:order-none"
+              disabled={entregaBloqueada(s)}
+              onClick={() => setEntregando(true)}
+            >
+              <PackageCheck size={16} strokeWidth={1.5} aria-hidden />
+              Marcar como entregada
+            </Button>
           )}
         </div>
       </header>
@@ -214,6 +229,7 @@ function Detalle({
                   { etiqueta: "Observaciones", valor: s.observaciones, ancho: true },
                   ...(s.retiradoEn
                     ? [
+                        { etiqueta: "Fecha y hora de entrega", valor: formatearInstante(s.retiradoEn), numerico: true, ancho: true },
                         {
                           etiqueta: "Retirada por",
                           valor: `${s.retiradoPorNombre ?? ""} · DNI ${formatearDni(s.retiradoPorDni ?? "")}`,
@@ -270,6 +286,16 @@ function Detalle({
           onActualizada(await registrarPago(s.id, datos));
           setRegistrandoPago(false);
           setPagoGuardado(true);
+        }}
+      />
+      <MarcarEntregadaDialog
+        solicitud={s}
+        abierto={entregando}
+        onCerrar={() => setEntregando(false)}
+        onConfirmar={async (datos) => {
+          await marcarEntregada(s.id, datos);
+          setEntregando(false);
+          await navigate({ to: "/solicitudes", state: { entregada: s.numero } });
         }}
       />
     </div>
