@@ -5,7 +5,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { crearRouter } from "@/app/router";
 import { guardarToken } from "@/features/auth/session";
 import type { Solicitud } from "@/types/dominio";
-import { listarSolicitudes, marcarEntregada, obtenerSolicitud, registrarPago } from "../api/solicitudesApi";
+import {
+  cancelarSolicitud,
+  firmarSolicitud,
+  listarSolicitudes,
+  marcarEntregada,
+  obtenerSolicitud,
+  registrarPago,
+} from "../api/solicitudesApi";
 
 vi.mock("../api/solicitudesApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api/solicitudesApi")>();
@@ -14,6 +21,8 @@ vi.mock("../api/solicitudesApi", async (importOriginal) => {
     obtenerSolicitud: vi.fn(),
     registrarPago: vi.fn(),
     marcarEntregada: vi.fn(),
+    firmarSolicitud: vi.fn(),
+    cancelarSolicitud: vi.fn(),
     listarSolicitudes: vi.fn(),
   };
 });
@@ -21,6 +30,8 @@ vi.mock("../api/solicitudesApi", async (importOriginal) => {
 const obtenerMock = vi.mocked(obtenerSolicitud);
 const pagoMock = vi.mocked(registrarPago);
 const entregarMock = vi.mocked(marcarEntregada);
+const firmarMock = vi.mocked(firmarSolicitud);
+const cancelarMock = vi.mocked(cancelarSolicitud);
 const listarMock = vi.mocked(listarSolicitudes);
 
 const base: Solicitud = {
@@ -53,9 +64,10 @@ function tokenVigente(): string {
   return `header.${payload}.firma`;
 }
 
-function renderApp() {
-  const router = crearRouter(createMemoryHistory({ initialEntries: [`/solicitudes/${base.id}`] }));
-  render(<RouterProvider router={router} />);
+function renderApp(path = `/solicitudes/${base.id}`, state?: { editada?: boolean }) {
+  const history = createMemoryHistory({ initialEntries: [path] });
+  if (state) history.replace(path, state);
+  render(<RouterProvider router={crearRouter(history)} />);
 }
 
 beforeEach(() => {
@@ -71,7 +83,203 @@ beforeEach(() => {
   obtenerMock.mockReset();
   pagoMock.mockReset();
   entregarMock.mockReset();
+  firmarMock.mockReset();
+  cancelarMock.mockReset();
   listarMock.mockReset();
+});
+
+describe("SolicitudDetallePage · carga", () => {
+  it("muestra el estado de carga mientras llega la solicitud", async () => {
+    obtenerMock.mockImplementation(() => new Promise(() => undefined));
+
+    renderApp();
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Cargando solicitud…");
+  });
+
+  it("muestra el error de carga y permite reintentar", async () => {
+    obtenerMock.mockRejectedValueOnce(new Error("red caída")).mockResolvedValueOnce(base);
+    const user = userEvent.setup();
+    renderApp();
+
+    expect(await screen.findByText("No pudimos cargar la solicitud")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Reintentar" }));
+
+    expect(await screen.findByRole("heading", { name: /Solicitud N.º/ })).toBeInTheDocument();
+    expect(obtenerMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("muestra el vacío si la solicitud no existe", async () => {
+    obtenerMock.mockResolvedValue(null);
+
+    renderApp();
+
+    expect(await screen.findByText("No encontramos la solicitud")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Volver a solicitudes" })).toBeInTheDocument();
+  });
+
+  it("avisa cuando se llega tras editar", async () => {
+    obtenerMock.mockResolvedValue({ ...base, estado: "pendiente" });
+
+    renderApp(`/solicitudes/${base.id}`, { editada: true });
+
+    expect(await screen.findByText("Cambios guardados.")).toBeInTheDocument();
+  });
+});
+
+describe("SolicitudDetallePage · firma (US44)", () => {
+  it("con constancia generada ofrece marcar como firmada y Ver constancia secundario", async () => {
+    obtenerMock.mockResolvedValue({ ...base, estado: "constancia_generada" });
+
+    renderApp();
+
+    expect(await screen.findByRole("button", { name: "Marcar como firmada" })).toBeEnabled();
+    expect(screen.getByText(/constancia ya fue generada: no se puede editar ni cancelar/i)).toBeInTheDocument();
+    const ver = screen.getByRole("link", { name: "Ver constancia" });
+    expect(ver).not.toHaveClass("bg-accent-fill");
+    expect(ver).toHaveClass("border-border-strong");
+  });
+
+  it("en entregada Ver constancia es el botón primario", async () => {
+    obtenerMock.mockResolvedValue({ ...abonada, estado: "entregada" });
+
+    renderApp();
+
+    const ver = await screen.findByRole("link", { name: "Ver constancia" });
+    expect(ver).toHaveClass("bg-accent-fill");
+  });
+
+  it("marca como firmada y pasa al layout de entrega", async () => {
+    obtenerMock.mockResolvedValue({ ...base, estado: "constancia_generada" });
+    firmarMock.mockResolvedValue({ ...base, estado: "firmada" });
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(await screen.findByRole("button", { name: "Marcar como firmada" }));
+
+    expect(firmarMock).toHaveBeenCalledWith(base.id);
+    expect(await screen.findByText("Constancia marcada como firmada. Ya se puede entregar.")).toBeInTheDocument();
+    expect(screen.getByText("Firmada")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Marcar como firmada" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Marcar como entregada" })).toBeInTheDocument();
+  });
+
+  it("muestra Marcando… mientras espera al back", async () => {
+    obtenerMock.mockResolvedValue({ ...base, estado: "constancia_generada" });
+    let resolver!: (s: Solicitud) => void;
+    firmarMock.mockImplementation(() => new Promise((resolve) => {
+      resolver = resolve;
+    }));
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(await screen.findByRole("button", { name: "Marcar como firmada" }));
+
+    expect(screen.getByRole("button", { name: "Marcando…" })).toBeDisabled();
+    resolver({ ...base, estado: "firmada" });
+    expect(await screen.findByText("Constancia marcada como firmada. Ya se puede entregar.")).toBeInTheDocument();
+  });
+
+  it("muestra el error si el back no deja firmar", async () => {
+    obtenerMock.mockResolvedValue({ ...base, estado: "constancia_generada" });
+    firmarMock.mockRejectedValue(new Error("La solicitud no se puede firmar"));
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(await screen.findByRole("button", { name: "Marcar como firmada" }));
+
+    expect(await screen.findByText("La solicitud no se puede firmar")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Marcar como firmada" })).toBeEnabled();
+  });
+
+  it("usa un mensaje genérico si el rechazo no es un Error", async () => {
+    obtenerMock.mockResolvedValue({ ...base, estado: "constancia_generada" });
+    firmarMock.mockRejectedValue("falló");
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(await screen.findByRole("button", { name: "Marcar como firmada" }));
+
+    expect(await screen.findByText("No se pudo marcar como firmada")).toBeInTheDocument();
+  });
+
+  it("al reintentar limpia el error anterior y muestra el aviso de éxito", async () => {
+    obtenerMock.mockResolvedValue({ ...base, estado: "constancia_generada" });
+    firmarMock
+      .mockRejectedValueOnce(new Error("La solicitud no se puede firmar"))
+      .mockResolvedValueOnce({ ...base, estado: "firmada" });
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(await screen.findByRole("button", { name: "Marcar como firmada" }));
+    expect(await screen.findByText("La solicitud no se puede firmar")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Marcar como firmada" }));
+
+    expect(await screen.findByText("Constancia marcada como firmada. Ya se puede entregar.")).toBeInTheDocument();
+    expect(screen.queryByText("La solicitud no se puede firmar")).not.toBeInTheDocument();
+  });
+
+  it.each(["pendiente", "firmada", "entregada", "cancelada"] as const)(
+    "no ofrece firmar una solicitud en estado %s",
+    async (estado) => {
+      obtenerMock.mockResolvedValue({ ...abonada, estado });
+
+      renderApp();
+
+      await screen.findByRole("heading", { name: /Solicitud N.º/ });
+      expect(screen.queryByRole("button", { name: "Marcar como firmada" })).not.toBeInTheDocument();
+    },
+  );
+});
+
+describe("SolicitudDetallePage · pendiente y cancelación (US13)", () => {
+  it("en pendiente permite editar, generar y cancelar", async () => {
+    obtenerMock.mockResolvedValue({ ...base, estado: "pendiente" });
+
+    renderApp();
+
+    expect(await screen.findByRole("link", { name: "Editar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Generar constancia" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Cancelar solicitud" })).toBeEnabled();
+    expect(screen.queryByRole("link", { name: "Ver constancia" })).not.toBeInTheDocument();
+  });
+
+  it("cancela la solicitud pendiente y muestra el motivo", async () => {
+    obtenerMock.mockResolvedValue({ ...base, estado: "pendiente" });
+    cancelarMock.mockResolvedValue({
+      ...base,
+      estado: "cancelada",
+      motivoCancelacion: "Pedido duplicado",
+    });
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(await screen.findByRole("button", { name: "Cancelar solicitud" }));
+    const modal = await screen.findByRole("dialog", { name: /Cancelar la solicitud/ });
+    await user.type(within(modal).getByLabelText(/Motivo de la cancelación/), "Pedido duplicado");
+    await user.click(within(modal).getByRole("button", { name: "Sí, cancelar solicitud" }));
+
+    expect(cancelarMock).toHaveBeenCalledWith(base.id, "Pedido duplicado");
+    expect(await screen.findByText("Solicitud cancelada")).toBeInTheDocument();
+    expect(screen.getByText(/Pedido duplicado/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancelar solicitud" })).toBeDisabled();
+  });
+
+  it("deja el modal abierto si el back rechaza la cancelación", async () => {
+    obtenerMock.mockResolvedValue({ ...base, estado: "pendiente" });
+    cancelarMock.mockRejectedValue(new Error("Solo se pueden cancelar solicitudes pendientes"));
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(await screen.findByRole("button", { name: "Cancelar solicitud" }));
+    const modal = await screen.findByRole("dialog", { name: /Cancelar la solicitud/ });
+    await user.type(within(modal).getByLabelText(/Motivo de la cancelación/), "Motivo");
+    await user.click(within(modal).getByRole("button", { name: "Sí, cancelar solicitud" }));
+
+    expect(await within(modal).findByRole("alert")).toHaveTextContent(/Solo se pueden cancelar/);
+    expect(within(modal).getByRole("button", { name: "Sí, cancelar solicitud" })).toBeEnabled();
+  });
 });
 
 describe("SolicitudDetallePage · entrega (US12)", () => {
