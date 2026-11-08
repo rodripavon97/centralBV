@@ -102,14 +102,17 @@ describe("MovilesPage", () => {
 
   it("muestra los móviles en orden natural aunque el back los mande en orden de texto", async () => {
     guardarToken(tokenDePrueba(["AUTOMOTORES"]));
-    const movil = (codigo: string) => ({
+    const movil = (codigo: string): MovilFlota => ({
       id: codigo,
       codigo,
       patente: "AB123CD",
       tipo: "Autobomba",
       marca: "Ford",
       modelo: "F-350",
-      estado: "operativo" as const,
+      tipoId: "t1",
+      marcaId: "m1",
+      modeloId: "mo1",
+      estado: "operativo",
     });
     vi.mocked(listarMoviles).mockResolvedValue({ items: ["M-1", "M-17", "M-2", "M-3"].map(movil), total: 4 });
     renderApp("/moviles");
