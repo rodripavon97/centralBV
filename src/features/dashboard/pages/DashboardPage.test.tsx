@@ -22,6 +22,9 @@ const movil = (n: number, estado: MovilFlota["estado"] = "operativo"): MovilFlot
   tipo: "Autobomba",
   marca: "Iveco",
   modelo: "Tector",
+  tipoId: TIPO,
+  marcaId: "marca-1",
+  modeloId: "modelo-1",
   estado,
 });
 
