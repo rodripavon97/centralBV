@@ -1,4 +1,6 @@
 # centralBV — Frontend
+[![Build React APP](https://github.com/rodripavon97/centralBV/actions/workflows/ci.yml/badge.svg)](https://github.com/rodripavon97/centralBV/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/rodripavon97/centralBV/branch/develop/graph/badge.svg?token=69V45UIRFU)](https://codecov.io/gh/rodripavon97/centralBV)
 
 Aplicación web (frontend) para la gestión operativa de un cuartel de bomberos voluntarios. Este repositorio contiene exclusivamente la interfaz construida con React; consume los servicios HTTP expuestos por el backend de centralBV.
 
