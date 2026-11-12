@@ -33,3 +33,7 @@ coverage
 
 
 .opencode/
+
+# Environment files
+.env*
+!.env.example
