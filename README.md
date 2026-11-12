@@ -36,11 +36,11 @@ Brindar una interfaz clara para el trabajo administrativo y operativo del cuarte
 - **Tailwind CSS** 4 (`tailwindcss`, `@tailwindcss/vite`) — estilos utilitarios/tokens en CSS
 - **Lucide React** (`lucide-react`) — íconos
 - **Fuentes**: Inter y JetBrains Mono (`@fontsource-variable/*`)
-- **Testing**: Vitest 5, Testing Library (`@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`), `jsdom`
+- **Testing unitario/integración (UI)**: Vitest 5, Testing Library (`@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`), `jsdom`, cobertura con `@vitest/coverage-v8`
+- **Testing E2E**: Playwright (`@playwright/test`) con specs en `tests/e2e/`
 - **Linting**: ESLint 10, `typescript-eslint`, plugins de React Hooks/Refresh
-- **Gestor de paquetes**: npm (scripts y lockfile `package-lock.json` presentes; también existe `pnpm-lock.yaml` en el repo, pero la ejecución documentada aquí usa npm)
+- **Gestor de paquetes**: npm (scripts y lockfile `package-lock.json`)
 
-**No implementado/verificado como ausente**: React Query (`@tanstack/react-query`) no figura en dependencias ni se detectó uso en `src/`.
 
 ## Arquitectura frontend
 
@@ -81,7 +81,6 @@ Definido en `src/app/router.tsx` con TanStack Router:
 - **Estado en URL** para filtros/búsqueda/paginación donde aplica (TanStack Router search params).
 - **Estado de navegación** (`history.state`) para avisos transitorios (creación/edición/entrega, sesión vencida, etc.), tipado en `src/app/router.tsx`.
 - **Sesión**: token JWT persistido en `localStorage` (`centralbv.token`), decodificación de payload para expiración (`exp`) y roles; helpers en `src/features/auth/session.ts`.
-- **Sin store global** (Redux/Zustand) ni React Query detectados.
 
 ### Integraciones (consumo desde el frontend)
 
@@ -116,13 +115,16 @@ Definido en `src/app/router.tsx` con TanStack Router:
 │  │  └─ usuarios/        # Administración de usuarios
 │  ├─ lib/                # Utilidades compartidas (http, hooks utilitarios)
 │  ├─ styles/             # Estilos globales y tokens
-│  ├─ test/               # Setup y utilidades de testing
+│  ├─ test/               # Setup y utilidades de testing (Vitest)
 │  ├─ types/              # Tipos de dominio compartidos
 │  └─ main.tsx            # Punto de entrada (React + RouterProvider)
+├─ tests/
+│  └─ e2e/                # Specs y fixtures de tests E2E (Playwright, backend simulado en memoria)
 ├─ .env.example           # Variables de entorno de ejemplo
 ├─ package.json           # Scripts y dependencias (npm)
+├─ playwright.config.ts   # Configuración de Playwright (E2E)
 ├─ vite.config.ts         # Configuración Vite (React, Tailwind, alias @)
-└─ vitest.config.ts       # Configuración de tests
+└─ vitest.config.ts       # Configuración de tests unitarios/integración y cobertura
 ```
 
 > Existen también archivos en `src/` como `guia.tsx` y `Cad.tsx` usados como páginas/componentes de referencia o apoyo (según el código). La ruta `/guia` está registrada en el router.
@@ -181,14 +183,46 @@ Scripts disponibles en `package.json`:
 # Lint
 npm run lint
 
-# Tests (una ejecución)
+# Tests unitarios/integración (Vitest, una ejecución)
 npm run test
 
 # Tests en modo watch
 npm run test:watch
+
+# Cobertura (Vitest + v8)
+npm run test:coverage
+
+# Tests E2E (Playwright)
+npm run test:e2e
+
+# Tests E2E con UI interactiva
+npm run test:e2e:ui
+
+# Abrir reporte HTML de Playwright
+npm run test:e2e:report
+
+# Cobertura + E2E
+npm run test:all
 ```
 
-Configuración de tests: `vitest.config.ts` (entorno `jsdom`, setup en `src/test/setup.ts`, alias `@` a `src`).
+### Unitarios / integración (Vitest)
+
+- Configuración: `vitest.config.ts`.
+- Entorno `jsdom`, setup en `src/test/setup.ts`, alias `@` a `src`.
+- `tests/**` y `dist/**` están excluidos de Vitest (los specs E2E se ejecutan por separado con Playwright).
+- Cobertura con provider `v8` (reporters `text`, `lcov`, `json-summary`) sobre `src/**/*.{ts,tsx}` con exclusiones configuradas.
+- Umbrales de cobertura definidos en configuración: statements 90%, branches 85%, functions 90%, lines 92%.
+
+### E2E (Playwright)
+
+- Configuración: `playwright.config.ts`; specs en `tests/e2e/` (incluye `fixtures/api.ts`).
+- Los tests no dependen de un backend real: interceptan `http://localhost:3000/**` mediante un backend en memoria definido en los fixtures.
+- Playwright levanta automáticamente el servidor de desarrollo de Vite (`npm run dev -- --host 127.0.0.1 --port 4173 --strictPort`) con `baseURL` `http://127.0.0.1:4173` y `VITE_API_URL=http://localhost:3000`.
+- Proyecto configurado: Chromium (Desktop Chrome), locale `es-AR`, zona horaria `America/Argentina/Buenos_Aires`.
+
+### CI
+
+- El workflow `.github/workflows/ci.yml` ejecuta lint, build y `npm run test:coverage` (publica resumen de cobertura, sube artefacto y envía reporte a Codecov). No se observó un paso que ejecute los tests E2E de Playwright en ese workflow.
 
 ## Documentación adicional
 
@@ -198,4 +232,4 @@ La carpeta `docs/` contiene documentación complementaria del proyecto (por ejem
 
 - Este README documenta el **frontend** y su consumo de API; no describe la implementación interna del backend.
 - La visibilidad de rutas/opciones por rol en UI mejora la experiencia, pero el control de acceso efectivo depende del backend.
-- El repositorio contiene tanto `package-lock.json` como `pnpm-lock.yaml`; las instrucciones de este documento usan **npm** por consistencia con los scripts y el alcance del frontend. Si el equipo estandariza otro gestor, conviene unificar los lockfiles.
+- Las instrucciones de instalación y ejecución de este documento usan **npm** (scripts y `package-lock.json`). Si el equipo estandariza otro gestor, conviene ajustar la documentación y los artefactos de lock en consecuencia.
