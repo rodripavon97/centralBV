@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { CircleX } from "lucide-react";
 import { Button } from "@/components/centralbv/Button";
 import { Field, Input, Select, Textarea } from "@/components/centralbv/Field";
@@ -40,8 +40,21 @@ export default function SolicitudForm({
   const errores = intentado ? validarSolicitud(valores) : {};
   const cantidadErrores = Object.keys(errores).length;
 
-  const set = (campo: CampoSolicitud) => (e: { target: { value: string } }) =>
-    setValores((v) => ({ ...v, [campo]: e.target.value }));
+  const filtrarLetrasKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && /\p{L}/u.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const set = (campo: CampoSolicitud) => (e: { target: { value: string } }) => {
+    let valor = e.target.value;
+    if (campo === "dni") {
+      valor = valor.replace(/[^\d.]/g, "");
+    } else if (campo === "telefono") {
+      valor = valor.replace(/[^\d\s()+-]/g, "");
+    }
+    setValores((v) => ({ ...v, [campo]: valor }));
+  };
 
   const control = (campo: CampoSolicitud, required = true) => ({
     ...fieldProps(campo, errores[campo], required),
@@ -75,10 +88,23 @@ export default function SolicitudForm({
           <Input autoComplete="off" {...control("nombre")} />
         </Field>
         <Field id="dni" label="DNI" required error={errores.dni}>
-          <Input inputMode="numeric" autoComplete="off" className="font-mono" {...control("dni")} />
+          <Input
+            inputMode="numeric"
+            autoComplete="off"
+            className="font-mono"
+            {...control("dni")}
+            onKeyDown={filtrarLetrasKeyDown}
+          />
         </Field>
         <Field id="telefono" label="Teléfono" error={errores.telefono}>
-          <Input type="tel" inputMode="tel" autoComplete="off" className="font-mono" {...control("telefono", false)} />
+          <Input
+            type="tel"
+            inputMode="tel"
+            autoComplete="off"
+            className="font-mono"
+            {...control("telefono", false)}
+            onKeyDown={filtrarLetrasKeyDown}
+          />
         </Field>
       </Seccion>
 

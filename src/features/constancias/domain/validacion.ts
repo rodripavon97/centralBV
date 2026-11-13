@@ -75,47 +75,123 @@ export const VALORES_VACIOS: ValoresSolicitud = {
 const OBLIGATORIO = "Este campo es obligatorio";
 const soloDigitos = (s: string) => s.replace(/\D/g, "");
 
+/**
+ * Strategy: interfaz funcional para la estrategia de validación de un campo.
+ * Recibe el valor del campo y la totalidad de valores para validaciones contextuales o condicionales.
+ */
+export type EstrategiaValidacion = (valor: string, todos: ValoresSolicitud) => string | undefined;
+
+// --- Estrategias de validación ---
+
+export const validarNombre: EstrategiaValidacion = (valor) => {
+  if (!valor.trim()) return OBLIGATORIO;
+  if (!/^[\p{L}' -]+$/u.test(valor.trim())) return "Usá solo letras";
+};
+
+export const validarDni: EstrategiaValidacion = (valor) => {
+  if (!valor.trim()) return OBLIGATORIO;
+  if (!/^[\d.\s]+$/.test(valor) || !/^\d{7,8}$/.test(soloDigitos(valor))) {
+    return "Ingresá un DNI válido (7 u 8 dígitos)";
+  }
+};
+
+export const validarTelefono: EstrategiaValidacion = (valor) => {
+  if (!valor.trim()) return undefined;
+  if (!/^[\d\s()+-]+$/.test(valor) || soloDigitos(valor).length !== 10) {
+    return "Ingresá un teléfono válido (10 dígitos)";
+  }
+};
+
+export const validarSeleccionObligatoria: EstrategiaValidacion = (valor) => {
+  if (!valor) return "Seleccioná una opción";
+};
+
+export const validarTextoObligatorio: EstrategiaValidacion = (valor) => {
+  if (!valor.trim()) return OBLIGATORIO;
+};
+
+export const validarFecha: EstrategiaValidacion = (valor) => {
+  if (!valor.trim()) return OBLIGATORIO;
+  const fecha = parsearFecha(valor);
+  if (!fecha) return "Usá el formato dd/mm/aaaa";
+  if (fecha > ahora().slice(0, 10)) return "La fecha no puede ser posterior a hoy";
+};
+
+export const validarHora: EstrategiaValidacion = (valor) => {
+  if (!valor.trim()) return OBLIGATORIO;
+  if (!parsearHora(valor)) return "Usá el formato hh:mm";
+};
+
+export const validarPatenteVehiculo: EstrategiaValidacion = (valor, todos) => {
+  if (todos.tipo !== "vehicular") return undefined;
+  if (!valor.trim()) return "La patente es obligatoria para un vehículo";
+  if (!/^[A-Za-z0-9 -]{5,10}$/.test(valor.trim())) return "Ingresá una patente válida";
+};
+
+export const validarNumeroPoliza: EstrategiaValidacion = (valor, todos) => {
+  if (todos.destino !== "seguro") return undefined;
+  if (!valor.trim()) return "El número de póliza es obligatorio";
+};
+
+/**
+ * Registry: administra el mapeo de cada campo con su estrategia de validación correspondiente.
+ */
+export class RegistroValidadores {
+  private readonly estrategias = new Map<CampoSolicitud, EstrategiaValidacion>();
+
+  registrar(campo: CampoSolicitud, estrategia: EstrategiaValidacion): this {
+    this.estrategias.set(campo, estrategia);
+    return this;
+  }
+
+  obtener(campo: CampoSolicitud): EstrategiaValidacion | undefined {
+    return this.estrategias.get(campo);
+  }
+
+  validarCampo(campo: CampoSolicitud, valores: ValoresSolicitud): string | undefined {
+    const estrategia = this.estrategias.get(campo);
+    return estrategia ? estrategia(valores[campo], valores) : undefined;
+  }
+
+  validarTodo(valores: ValoresSolicitud): ErroresSolicitud {
+    const errores: ErroresSolicitud = {};
+    for (const [campo, estrategia] of this.estrategias) {
+      const error = estrategia(valores[campo], valores);
+      if (error) errores[campo] = error;
+    }
+    return errores;
+  }
+}
+
+/** Construye y configura el registro de validadores por defecto de la solicitud. */
+export function crearRegistroSolicitud(): RegistroValidadores {
+  const registro = new RegistroValidadores();
+
+  registro
+    .registrar("nombre", validarNombre)
+    .registrar("dni", validarDni)
+    .registrar("telefono", validarTelefono)
+    .registrar("tipo", validarSeleccionObligatoria)
+    .registrar("fecha", validarFecha)
+    .registrar("hora", validarHora)
+    .registrar("direccion", validarTextoObligatorio)
+    .registrar("numeroParte", validarTextoObligatorio)
+    .registrar("motivo", validarTextoObligatorio)
+    .registrar("localidad", validarTextoObligatorio)
+    .registrar("partido", validarTextoObligatorio)
+    .registrar("perdidas", validarTextoObligatorio)
+    .registrar("patenteVehiculo", validarPatenteVehiculo)
+    .registrar("destino", validarSeleccionObligatoria)
+    .registrar("razonSocial", validarTextoObligatorio)
+    .registrar("numeroPoliza", validarNumeroPoliza);
+
+  return registro;
+}
+
+export const registroValidadores = crearRegistroSolicitud();
+
 export function validarSolicitud(v: ValoresSolicitud): ErroresSolicitud {
-  const e: ErroresSolicitud = {};
-
-  if (!v.nombre.trim()) e.nombre = OBLIGATORIO;
-  else if (!/^[\p{L}' -]+$/u.test(v.nombre.trim())) e.nombre = "Usá solo letras";
-
-  if (!v.dni.trim()) e.dni = OBLIGATORIO;
-  else if (!/^[\d.\s]+$/.test(v.dni) || !/^\d{7,8}$/.test(soloDigitos(v.dni)))
-    e.dni = "Ingresá un DNI válido (7 u 8 dígitos)";
-
-  if (v.telefono.trim() && (!/^[\d\s()+-]+$/.test(v.telefono) || soloDigitos(v.telefono).length < 6))
-    e.telefono = "Ingresá un teléfono válido";
-
-  if (!v.tipo) e.tipo = "Seleccioná una opción";
-
-  if (!v.fecha.trim()) e.fecha = OBLIGATORIO;
-  else {
-    const fecha = parsearFecha(v.fecha);
-    if (!fecha) e.fecha = "Usá el formato dd/mm/aaaa";
-    else if (fecha > ahora().slice(0, 10)) e.fecha = "La fecha no puede ser posterior a hoy";
-  }
-
-  if (!v.hora.trim()) e.hora = OBLIGATORIO;
-  else if (!parsearHora(v.hora)) e.hora = "Usá el formato hh:mm";
-
-  for (const campo of ["direccion", "numeroParte", "motivo", "localidad", "partido", "perdidas"] as const) {
-    if (!v[campo].trim()) e[campo] = OBLIGATORIO;
-  }
-
-  if (v.tipo === "vehicular") {
-    if (!v.patenteVehiculo.trim()) e.patenteVehiculo = "La patente es obligatoria para un vehículo";
-    else if (!/^[A-Za-z0-9 -]{5,10}$/.test(v.patenteVehiculo.trim())) e.patenteVehiculo = "Ingresá una patente válida";
-  }
-
-  if (!v.destino) e.destino = "Seleccioná una opción";
-
-  if (!v.razonSocial.trim()) e.razonSocial = OBLIGATORIO;
-
-  if (v.destino === "seguro" && !v.numeroPoliza.trim()) e.numeroPoliza = "El número de póliza es obligatorio";
-
-  return e;
+  return registroValidadores.validarTodo(v);
 }
 
 /** Llamar solo con valores ya validados. */

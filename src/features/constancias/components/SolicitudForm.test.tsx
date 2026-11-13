@@ -54,8 +54,8 @@ describe("SolicitudForm", () => {
     expect(screen.getByLabelText(/^Nombre y apellido/)).toHaveFocus();
     expect(screen.getAllByText("Este campo es obligatorio").length).toBeGreaterThan(0);
 
-    await user.type(screen.getByLabelText(/^Teléfono/), "abc");
-    expect(screen.getByText("Ingresá un teléfono válido")).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/^Teléfono/), "12345");
+    expect(screen.getByText("Ingresá un teléfono válido (10 dígitos)")).toBeInTheDocument();
   });
 
   it("envía los datos normalizados cuando el formulario es válido", async () => {
@@ -144,5 +144,18 @@ describe("SolicitudForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(onCancelar).toHaveBeenCalledTimes(1);
+  });
+
+  it("no permite ingresar letras en DNI ni en teléfono", async () => {
+    const user = userEvent.setup();
+    render(<SolicitudForm textoGuardar="Guardar solicitud" onGuardar={vi.fn()} onCancelar={vi.fn()} />);
+
+    const inputDni = screen.getByLabelText(/^DNI/);
+    await user.type(inputDni, "30abc112def.456");
+    expect(inputDni).toHaveValue("30112.456");
+
+    const inputTel = screen.getByLabelText(/^Teléfono/);
+    await user.type(inputTel, "11abc 5555-def1234");
+    expect(inputTel).toHaveValue("11 5555-1234");
   });
 });

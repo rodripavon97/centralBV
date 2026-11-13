@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { VALORES_VACIOS, datosDesdeValores, validarSolicitud, type ValoresSolicitud } from "./validacion";
+import {
+  RegistroValidadores,
+  VALORES_VACIOS,
+  datosDesdeValores,
+  registroValidadores,
+  validarDni,
+  validarPatenteVehiculo,
+  validarSolicitud,
+  validarTelefono,
+  type ValoresSolicitud,
+} from "./validacion";
 
 const validos: ValoresSolicitud = {
   nombre: "Lucía Fernández",
@@ -49,10 +59,20 @@ describe("validarSolicitud (US08)", () => {
     const errores = validarSolicitud({ ...validos, dni: "30.112", telefono: "abc", fecha: "2026-10-11", hora: "25:00" });
     expect(errores).toMatchObject({
       dni: "Ingresá un DNI válido (7 u 8 dígitos)",
-      telefono: "Ingresá un teléfono válido",
+      telefono: "Ingresá un teléfono válido (10 dígitos)",
       fecha: "Usá el formato dd/mm/aaaa",
       hora: "Usá el formato hh:mm",
     });
+  });
+
+  it("rechaza teléfono que no tenga exactamente 10 dígitos", () => {
+    expect(validarSolicitud({ ...validos, telefono: "11 555-014" }).telefono).toBe(
+      "Ingresá un teléfono válido (10 dígitos)",
+    );
+    expect(validarSolicitud({ ...validos, telefono: "11 5555-01420" }).telefono).toBe(
+      "Ingresá un teléfono válido (10 dígitos)",
+    );
+    expect(validarSolicitud({ ...validos, telefono: "11 5555-0142" }).telefono).toBeUndefined();
   });
 
   it("rechaza una fecha futura", () => {
@@ -68,6 +88,37 @@ describe("validarSolicitud (US08)", () => {
     });
   });
 });
+
+describe("Patrón Strategy + Registry", () => {
+  it("permite ejecutar estrategias de forma unitaria e independiente", () => {
+    expect(validarTelefono("11 5555-0142", validos)).toBeUndefined();
+    expect(validarTelefono("123", validos)).toBe("Ingresá un teléfono válido (10 dígitos)");
+    expect(validarDni("abc", validos)).toBe("Ingresá un DNI válido (7 u 8 dígitos)");
+    expect(validarPatenteVehiculo("", { ...validos, tipo: "vivienda" })).toBeUndefined();
+    expect(validarPatenteVehiculo("", { ...validos, tipo: "vehicular" })).toBe(
+      "La patente es obligatoria para un vehículo",
+    );
+  });
+
+  it("permite registrar y validar mediante RegistroValidadores", () => {
+    const registro = new RegistroValidadores();
+    registro.registrar("telefono", validarTelefono);
+
+    expect(registro.validarCampo("telefono", validos)).toBeUndefined();
+    expect(registro.validarCampo("telefono", { ...validos, telefono: "99" })).toBe(
+      "Ingresá un teléfono válido (10 dígitos)",
+    );
+  });
+
+  it("permite extender o sobrescribir estrategias en un registro", () => {
+    const registro = new RegistroValidadores();
+    registro.registrar("nombre", (valor) => (valor === "Admin" ? "Nombre reservado" : undefined));
+
+    expect(registro.validarCampo("nombre", { ...validos, nombre: "Admin" })).toBe("Nombre reservado");
+    expect(registro.validarCampo("nombre", { ...validos, nombre: "Lucía" })).toBeUndefined();
+  });
+});
+
 
 describe("datosDesdeValores", () => {
   it("deja el DNI solo con dígitos, la fecha y la hora normalizadas y los opcionales vacíos sin valor", () => {
@@ -97,3 +148,4 @@ describe("datosDesdeValores", () => {
     });
   });
 });
+
