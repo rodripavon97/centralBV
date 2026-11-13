@@ -2,8 +2,11 @@ import { useState, type FormEvent, type KeyboardEvent, type ReactNode } from "re
 import { CircleX } from "lucide-react";
 import { Button } from "@/components/centralbv/Button";
 import { Field, Input, Select, Textarea } from "@/components/centralbv/Field";
+import { DatePicker } from "@/components/centralbv/DatePicker";
+import { TimePicker } from "@/components/centralbv/TimePicker";
 import { fieldProps } from "@/components/centralbv/estilos";
 import { Alert } from "@/components/centralbv/Alert";
+import { hoy, horaActual, parsearFecha } from "@/lib/fecha";
 import { DESTINOS_CONSTANCIA, TIPOS_SINIESTRO } from "../domain/formato";
 import {
   CAMPOS,
@@ -39,6 +42,11 @@ export default function SolicitudForm({
   // y desde ahí se actualizan mientras la persona corrige.
   const errores = intentado ? validarSolicitud(valores) : {};
   const cantidadErrores = Object.keys(errores).length;
+
+  // Si el siniestro fue hoy, la hora no puede pasarse de la actual:
+  // el datepicker cierra en hoy y el timepicker en este límite.
+  const esHoy = parsearFecha(valores.fecha) === hoy();
+  const horaMaxima = esHoy ? horaActual() : undefined;
 
   const filtrarLetrasKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && /\p{L}/u.test(e.key)) {
@@ -122,10 +130,19 @@ export default function SolicitudForm({
           </Select>
         </Field>
         <Field id="fecha" label="Fecha" required error={errores.fecha}>
-          <Input placeholder="dd/mm/aaaa" autoComplete="off" className="font-mono" {...control("fecha")} />
+          <DatePicker
+            {...fieldProps("fecha", errores.fecha, true)}
+            value={valores.fecha}
+            onChange={(fecha) => setValores((v) => ({ ...v, fecha }))}
+          />
         </Field>
         <Field id="hora" label="Hora" required error={errores.hora}>
-          <Input placeholder="hh:mm" autoComplete="off" className="font-mono" {...control("hora")} />
+          <TimePicker
+            {...fieldProps("hora", errores.hora, true)}
+            value={valores.hora}
+            max={horaMaxima}
+            onChange={(hora) => setValores((v) => ({ ...v, hora }))}
+          />
         </Field>
         <Field id="direccion" label="Domicilio del hecho" required error={errores.direccion} className="md:col-span-2">
           <Input autoComplete="off" {...control("direccion")} />

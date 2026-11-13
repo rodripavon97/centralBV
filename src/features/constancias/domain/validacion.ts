@@ -2,10 +2,11 @@ import type { Constancia, Damnificado, DestinoConstancia, Siniestro, Solicitud, 
 import {
   DESTINOS_CONSTANCIA,
   TIPOS_SINIESTRO,
-  ahora,
   formatearDni,
   formatearFecha,
   formatearHora,
+  hoy,
+  horaActual,
   parsearFecha,
   parsearHora,
 } from "./formato";
@@ -114,12 +115,18 @@ export const validarFecha: EstrategiaValidacion = (valor) => {
   if (!valor.trim()) return OBLIGATORIO;
   const fecha = parsearFecha(valor);
   if (!fecha) return "Usá el formato dd/mm/aaaa";
-  if (fecha > ahora().slice(0, 10)) return "La fecha no puede ser posterior a hoy";
+  if (fecha > hoy()) return "La fecha no puede ser posterior a hoy";
 };
 
-export const validarHora: EstrategiaValidacion = (valor) => {
+export const validarHora: EstrategiaValidacion = (valor, todos) => {
   if (!valor.trim()) return OBLIGATORIO;
-  if (!parsearHora(valor)) return "Usá el formato hh:mm";
+  const hora = parsearHora(valor);
+  if (!hora) return "Usá el formato hh:mm";
+  // No se puede registrar un accidente futuro: si la fecha es hoy,
+  // la hora no puede superar la hora actual.
+  if (parsearFecha(todos.fecha) === hoy() && hora > horaActual()) {
+    return "La hora no puede ser posterior a la hora actual";
+  }
 };
 
 export const validarPatenteVehiculo: EstrategiaValidacion = (valor, todos) => {

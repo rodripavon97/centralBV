@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   RegistroValidadores,
   VALORES_VACIOS,
@@ -76,6 +76,32 @@ describe("validarSolicitud (US08)", () => {
 
   it("rechaza una fecha futura", () => {
     expect(validarSolicitud({ ...validos, fecha: "01/01/2999" }).fecha).toBe("La fecha no puede ser posterior a hoy");
+  });
+
+  it("acepta hoy hasta la hora actual y rechaza una hora posterior", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 13, 14, 30));
+
+    expect(validarSolicitud({ ...validos, fecha: "13/11/2026", hora: "14:30" }).hora).toBeUndefined();
+    expect(validarSolicitud({ ...validos, fecha: "13/11/2026", hora: "14:29" }).hora).toBeUndefined();
+    expect(validarSolicitud({ ...validos, fecha: "13/11/2026", hora: "14:31" }).hora).toBe(
+      "La hora no puede ser posterior a la hora actual",
+    );
+
+    vi.useRealTimers();
+  });
+
+  it("acepta cualquier hora de un día anterior", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 13, 14, 30));
+
+    expect(validarSolicitud({ ...validos, fecha: "12/11/2026", hora: "23:59" }).hora).toBeUndefined();
+
+    vi.useRealTimers();
+  });
+
+  it("no compara la hora cuando la fecha todavía no es válida", () => {
+    expect(validarSolicitud({ ...validos, fecha: "", hora: "23:59" }).hora).toBeUndefined();
   });
 
   it("exige patente para un vehículo y póliza para un seguro", () => {
