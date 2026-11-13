@@ -17,7 +17,7 @@ Brindar una interfaz clara para el trabajo administrativo y operativo del cuarte
 ## Funcionalidades implementadas (según el código)
 
 - **Autenticación**: inicio de sesión, cierre de sesión, aviso de sesión vencida, flujo de recuperación/restablecimiento de contraseña (rutas públicas y pantalla de confirmación).
-- **Solicitudes de constancia**: listado con búsqueda/filtros/orden/paginación en URL, creación, detalle, edición, generación de constancia (PDF), descarga de PDF, marcado como firmada, registro de pago y entrega/cancelación mediante diálogos y páginas dedicadas.
+- **Solicitudes de constancia**: listado con búsqueda/filtros/orden/paginación en URL, creación y edición con formulario (incluye selectores de fecha y hora para el accidente, con validaciones de formato y restricciones de fechas/horas futuras según corresponda), detalle, generación de constancia (PDF), descarga de PDF, marcado como firmada, registro de pago y entrega/cancelación mediante diálogos y páginas dedicadas.
 - **Móviles**: listado/búsqueda, ficha técnica, alta y edición (protegidas por rol `AUTOMOTORES`/`ADMIN` en el cliente), registro de revisiones, gestión de catálogos y componentes asociados a la ficha/revisión.
 - **Usuarios**: listado, alta, detalle y edición (protegidas por rol `ADMIN` en el cliente).
 - **Navegación**: layout con riel lateral (desktop/tablet) y menú móvil, destinos visibles según rol leído del token.
@@ -35,6 +35,7 @@ Brindar una interfaz clara para el trabajo administrativo y operativo del cuarte
 - **Axios** (`axios`) — cliente HTTP
 - **Tailwind CSS** 4 (`tailwindcss`, `@tailwindcss/vite`) — estilos utilitarios/tokens en CSS
 - **Lucide React** (`lucide-react`) — íconos
+- **Fechas y selectores de fecha/hora**: `date-fns`, `react-calendar`, `react-date-picker`, `react-time-picker` (utilizados en componentes de selección de fecha/hora y utilidades de formato/validación)
 - **Fuentes**: Inter y JetBrains Mono (`@fontsource-variable/*`)
 - **Testing unitario/integración (UI)**: Vitest 5, Testing Library (`@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`), `jsdom`, cobertura con `@vitest/coverage-v8`
 - **Testing E2E**: Playwright (`@playwright/test`) con specs en `tests/e2e/`
@@ -59,10 +60,10 @@ flowchart TB
 ### Organización
 
 - **Por features**: la lógica se agrupa por funcionalidad (`src/features/*`) con subcarpetas típicas como `pages/`, `components/`, `api/`, `domain/`, `hooks/` (según necesidad de cada feature).
-- **Componentes compartidos**: `src/components/centralbv/` contiene componentes reutilizables de la UI (botones, campos, alertas, paginación, etc.).
-- **Infraestructura compartida**: `src/lib/http.ts` define la instancia Axios (`baseURL` desde `VITE_API_URL`) y la clase/utilidad `ErrorApi`.
+- **Componentes compartidos**: `src/components/centralbv/` contiene componentes reutilizables de la UI (botones, campos, alertas, paginación, selectores de fecha/hora como `DatePicker` y `TimePicker`, etc.).
+- **Infraestructura compartida**: `src/lib/http.ts` define la instancia Axios (`baseURL` desde `VITE_API_URL`) y la clase/utilidad `ErrorApi`; `src/lib/fecha.ts` centraliza utilidades de formato, parseo y validación de fechas/horas.
 - **Tipos de dominio**: `src/types/dominio.ts` centraliza tipos compartidos (roles, estados, solicitudes, vehículos/inspección, etc.).
-- **Estilos/tokens**: entrada en `src/styles/index.css` y tokens en `src/styles/tokens.css`; `src/main.tsx` importa `./styles/index.css`.
+- **Estilos/tokens**: entrada en `src/styles/index.css`, tokens en `src/styles/tokens.css` y estilos de selectores en `src/styles/pickers.css`; `src/main.tsx` importa `./styles/index.css`.
 
 ### Routing y guards
 
@@ -105,16 +106,16 @@ Definido en `src/app/router.tsx` con TanStack Router:
 │  ├─ app/                # Router, layout principal, configuración HTTP/interceptores
 │  ├─ assets/             # Imágenes/SVG usados por la app
 │  ├─ components/
-│  │  └─ centralbv/       # Componentes UI reutilizables
+│  │  └─ centralbv/       # Componentes UI reutilizables (incl. DatePicker/TimePicker)
 │  ├─ features/           # Módulos por funcionalidad
 │  │  ├─ auth/            # Login, sesión, recuperación de contraseña (api/domain/pages/components)
-│  │  ├─ constancias/     # Solicitudes de constancia
+│  │  ├─ constancias/     # Solicitudes de constancia (formulario con selectores de fecha/hora y validaciones)
 │  │  ├─ dashboard/       # Panel inicial/flota
 │  │  ├─ moviles/         # Gestión de móviles y revisiones
 │  │  ├─ sistema/         # Pantallas de sistema (ej. no encontrada)
 │  │  └─ usuarios/        # Administración de usuarios
-│  ├─ lib/                # Utilidades compartidas (http, hooks utilitarios)
-│  ├─ styles/             # Estilos globales y tokens
+│  ├─ lib/                # Utilidades compartidas (http, hooks, fecha/hora)
+│  ├─ styles/             # Estilos globales, tokens y estilos de pickers (pickers.css)
 │  ├─ test/               # Setup y utilidades de testing (Vitest)
 │  ├─ types/              # Tipos de dominio compartidos
 │  └─ main.tsx            # Punto de entrada (React + RouterProvider)
@@ -134,7 +135,7 @@ Definido en `src/app/router.tsx` con TanStack Router:
 - **`src/app/AppLayout.tsx`**: shell autenticado (riel/menú, navegación por rol, cierre de sesión).
 - **`src/app/router.tsx`**: árbol de rutas, guards, validación de búsqueda y tipos de estado de historial.
 - **`src/features/auth/*`**: autenticación, persistencia/lectura de sesión JWT, recuperación de contraseña.
-- **`src/features/constancias/*`**: flujo completo de solicitudes/constancias, incluyendo PDF y cambios de estado.
+- **`src/features/constancias/*`**: flujo completo de solicitudes/constancias, incluyendo formulario con selectores de fecha/hora y validaciones asociadas, PDF y cambios de estado.
 - **`src/features/moviles/*`**: ABM/consulta de móviles, ficha técnica, revisiones y catálogos.
 - **`src/features/usuarios/*`**: administración de usuarios (restringida por rol en UI).
 - **`src/components/centralbv/*`**: base de componentes reutilizables (Alert, Button, Field, Paginación, etc.).
