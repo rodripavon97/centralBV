@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 import type { MovilFlota } from "../domain/movil";
 import type { RevisionMovil } from "../domain/revision";
 import { DetalleRevision, PanelDatosGenerales, PanelInventario } from "./PanelesFicha";
@@ -18,16 +19,36 @@ const movil: MovilFlota = {
 };
 
 describe("PanelesFicha", () => {
-  it("muestra los datos generales del móvil", () => {
+  it("muestra los datos generales y el código QR del móvil", () => {
     render(<PanelDatosGenerales movil={movil} />);
 
-    expect(screen.getByRole("heading", { name: "Datos del móvil" })).toBeInTheDocument();
-    expect(screen.getByText("M-1")).toBeInTheDocument();
-    expect(screen.getByText("AB 123 CD")).toBeInTheDocument();
-    expect(screen.getByText("Autobomba")).toBeInTheDocument();
-    expect(screen.getByText("Ford")).toBeInTheDocument();
-    expect(screen.getByText("F-100")).toBeInTheDocument();
+    const datos = screen.getByRole("heading", { name: "Datos del móvil" }).closest("section")!;
+    expect(within(datos).getByText("M-1")).toBeInTheDocument();
+    expect(within(datos).getByText("AB 123 CD")).toBeInTheDocument();
+    expect(within(datos).getByText("Autobomba")).toBeInTheDocument();
+    expect(within(datos).getByText("Ford")).toBeInTheDocument();
+    expect(within(datos).getByText("F-100")).toBeInTheDocument();
     expect(screen.queryByText("Motivo de baja")).not.toBeInTheDocument();
+
+    const qr = screen.getByRole("heading", { name: "Código QR" }).closest("section")!;
+    expect(within(qr).getAllByRole("img", { name: "QR de revisión de M-1" }).length).toBeGreaterThanOrEqual(1);
+    expect(within(qr).getByRole("button", { name: "Imprimir" })).toBeInTheDocument();
+    // Portal de impresión (oculto en pantalla) también monta el QR.
+    expect(document.getElementById("etiqueta-movil-impresion")).toBeInTheDocument();
+  });
+
+  it("abre el diálogo de impresión de la etiqueta QR", async () => {
+    const imprimir = vi.spyOn(window, "print").mockImplementation(() => {});
+    render(<PanelDatosGenerales movil={movil} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Imprimir" }));
+    const dialogo = screen.getByRole("heading", { name: "Imprimir etiqueta" }).closest("dialog")!;
+    expect(dialogo).toBeInTheDocument();
+
+    await user.click(within(dialogo).getByRole("button", { name: "Imprimir" }));
+    await waitFor(() => expect(imprimir).toHaveBeenCalled());
+    imprimir.mockRestore();
   });
 
   it("muestra el motivo cuando el móvil está dado de baja", () => {

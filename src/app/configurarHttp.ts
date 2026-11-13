@@ -18,7 +18,10 @@ http.interceptors.response.use(undefined, async (error: unknown) => {
     axios.isAxiosError(error) && (error.config?.url?.startsWith("/auth/") ?? false);
   if (axios.isAxiosError(error) && error.response?.status === 401 && !esEndpointAuth) {
     borrarToken();
-    await router.navigate({ to: "/login", state: { sesionVencida: true } });
+    await router.navigate({
+      to: "/login",
+      state: { sesionVencida: true, volverA: router.state.location.href },
+    });
   }
   return Promise.reject(error);
 });
