@@ -9,6 +9,8 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // En Windows el pool por defecto (forks) rompe el contexto de suite en setupFiles.
+    pool: "vmThreads",
     setupFiles: ["./src/test/setup.ts"],
     clearMocks: true,
     // Los formularios largos se completan con `userEvent` carácter por carácter;

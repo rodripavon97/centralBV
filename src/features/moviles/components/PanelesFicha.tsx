@@ -12,6 +12,7 @@ import {
   type RevisionMovil,
 } from "../domain/revision";
 import BadgeVerificacion from "./BadgeVerificacion";
+import CodigoQrMovil from "./CodigoQrMovil";
 import EstadoMovilBadge from "./EstadoMovilBadge";
 
 /* Contenido de cada pestaña de la ficha (Figma S4). Inventario llega con US17 (Release 2);
@@ -36,7 +37,8 @@ function Dato({ etiqueta, children, mono }: { etiqueta: string; children: ReactN
   );
 }
 
-const GRILLA_DATOS = "grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4";
+/* Dos columnas: la tarjeta de datos ocupa la mitad; la grilla interna no pasa de 2. */
+const GRILLA_DATOS = "grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2";
 
 const TONO_VERIFICACION: Record<EstadoVerificacion, "ok" | "warn" | "danger"> = {
   ok: "ok",
@@ -46,22 +48,28 @@ const TONO_VERIFICACION: Record<EstadoVerificacion, "ok" | "warn" | "danger"> = 
 
 export function PanelDatosGenerales({ movil }: { movil: MovilFlota }) {
   return (
-    <Tarjeta titulo="Datos del móvil">
-      <dl className={GRILLA_DATOS}>
-        <Dato etiqueta="N.º interno">{movil.codigo}</Dato>
-        <Dato etiqueta="Patente" mono>
-          {formatearPatente(movil.patente)}
-        </Dato>
-        <Dato etiqueta="Tipo">{movil.tipo}</Dato>
-        <Dato etiqueta="Marca">{movil.marca}</Dato>
-        <Dato etiqueta="Modelo">{movil.modelo}</Dato>
-        {movil.motivoBaja && (
-          <Dato etiqueta="Motivo de baja">
-            <span className="whitespace-pre-line">{movil.motivoBaja}</span>
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <Tarjeta titulo="Datos del móvil">
+        <dl className={GRILLA_DATOS}>
+          <Dato etiqueta="N.º interno">{movil.codigo}</Dato>
+          <Dato etiqueta="Patente" mono>
+            {formatearPatente(movil.patente)}
           </Dato>
-        )}
-      </dl>
-    </Tarjeta>
+          <Dato etiqueta="Tipo">{movil.tipo}</Dato>
+          <Dato etiqueta="Marca">{movil.marca}</Dato>
+          <Dato etiqueta="Modelo">{movil.modelo}</Dato>
+          {movil.motivoBaja && (
+            <Dato etiqueta="Motivo de baja">
+              <span className="whitespace-pre-line">{movil.motivoBaja}</span>
+            </Dato>
+          )}
+        </dl>
+      </Tarjeta>
+
+      <Tarjeta titulo="Código QR">
+        <CodigoQrMovil movil={movil} />
+      </Tarjeta>
+    </div>
   );
 }
 
