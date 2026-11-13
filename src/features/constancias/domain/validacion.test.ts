@@ -3,7 +3,6 @@ import {
   RegistroValidadores,
   VALORES_VACIOS,
   datosDesdeValores,
-  registroValidadores,
   validarDni,
   validarPatenteVehiculo,
   validarSolicitud,
