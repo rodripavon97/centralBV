@@ -3,6 +3,7 @@ import {
   VALORES_VACIOS,
   cumpleContrasena,
   datosDesdeValores,
+  datosEditadosDesdeValores,
   validarUsuario,
   type ValoresUsuario,
 } from "./validacionUsuario";
@@ -64,5 +65,37 @@ describe("validacionUsuario", () => {
       password: "Cuartel2026",
       roleName: "comun",
     });
+  });
+
+  it("solo envía el campo modificado al editar", () => {
+    const inicial: Partial<ValoresUsuario> = {
+      nombre: "Carla",
+      apellido: "Núñez",
+      email: "cmunoz@bomberos.org",
+      rol: "comun",
+    };
+
+    expect(datosEditadosDesdeValores({ ...validos, email: "carla@bomberos.org" }, inicial)).toEqual({
+      email: "carla@bomberos.org",
+    });
+    expect(datosEditadosDesdeValores({ ...validos, rol: "automotores" }, inicial)).toEqual({
+      roleName: "automotores",
+    });
+  });
+
+  it("no devuelve cambios cuando los valores son equivalentes", () => {
+    const inicial: Partial<ValoresUsuario> = {
+      nombre: "Carla",
+      apellido: "Núñez",
+      email: "cmunoz@bomberos.org",
+      rol: "comun",
+    };
+
+    expect(
+      datosEditadosDesdeValores(
+        { ...validos, nombre: " Carla ", email: " CMunoz@Bomberos.org " },
+        inicial,
+      ),
+    ).toEqual({});
   });
 });

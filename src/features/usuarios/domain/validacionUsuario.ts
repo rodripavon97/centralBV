@@ -90,11 +90,24 @@ export function datosDesdeValores(valores: ValoresUsuario): DatosUsuario {
   };
 }
 
-export function datosEditadosDesdeValores(valores: ValoresUsuario): DatosEdicionUsuario {
-  return {
-    nombre: valores.nombre.trim(),
-    apellido: valores.apellido.trim(),
-    email: valores.email.trim().toLowerCase(),
-    roleName: valores.rol as RolUsuario,
-  };
+/**
+ * Compara los valores del formulario con los del usuario cargado y devuelve
+ * solo los campos modificados, que es lo que espera PATCH /users/:id.
+ */
+export function datosEditadosDesdeValores(
+  valores: ValoresUsuario,
+  inicial: Partial<ValoresUsuario> = {},
+): Partial<DatosEdicionUsuario> {
+  const cambios: Partial<DatosEdicionUsuario> = {};
+  const nombre = valores.nombre.trim();
+  const apellido = valores.apellido.trim();
+  const email = valores.email.trim().toLowerCase();
+  const roleName = valores.rol as RolUsuario;
+
+  if (nombre && nombre !== inicial.nombre?.trim()) cambios.nombre = nombre;
+  if (apellido && apellido !== inicial.apellido?.trim()) cambios.apellido = apellido;
+  if (email && email !== inicial.email?.trim().toLowerCase()) cambios.email = email;
+  if (roleName && roleName !== inicial.rol) cambios.roleName = roleName;
+
+  return cambios;
 }

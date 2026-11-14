@@ -98,7 +98,9 @@ export default function UsuarioFichaPage({ id, modo }: { id: string; modo: ModoF
         inicial={inicial}
         onGuardar={modo === "editar" ? async (datos) => {
           if ("password" in datos) return;
-          await actualizarUsuario(id, datos);
+          if (Object.keys(datos).length > 0) {
+            await actualizarUsuario(id, datos);
+          }
           await navigate({ to: "/usuarios/$id", params: { id } });
         } : undefined}
         onCancelar={volver}
