@@ -4,7 +4,7 @@
 export const focus =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-text focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base";
 
-export type ButtonVariant = "primary" | "secondary" | "danger";
+export type ButtonVariant = "primary" | "secondary" | "danger" | "success";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
@@ -14,6 +14,9 @@ const variants: Record<ButtonVariant, string> = {
   // Acción destructiva secundaria: siempre abre un modal de confirmación.
   danger:
     "border border-red-700 text-accent-text hover:bg-accent-subtle disabled:border-border-strong disabled:text-text-disabled disabled:hover:bg-transparent",
+  // Acción de habilitación (por ejemplo, reactivar un usuario).
+  success:
+    "border border-state-ok text-state-ok hover:bg-state-ok-bg disabled:border-border-strong disabled:text-text-disabled disabled:hover:bg-transparent",
 };
 
 export function buttonClass(variant: ButtonVariant = "secondary", extra = "") {
