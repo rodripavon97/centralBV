@@ -56,6 +56,74 @@ test.describe("Móviles", () => {
     await expect(page).toHaveURL(/\/moviles$/);
   });
 
+  test("genera los buches, cambia el estado de uno, lo edita, agrega y elimina (US17)", async ({ page }) => {
+    await abrirConSesion(page, "/moviles/movil-1?pestana=inventario");
+    await page.getByRole("link", { name: "Generar buches" }).click();
+
+    await expect(page.getByRole("heading", { name: "Generar buches", level: 1 })).toBeVisible();
+    await expect(page.getByText(/Se van a crear 9 buches: LC-1 a LC-5, LA-1 a LA-2, TR-1 y TE-1/)).toBeVisible();
+    await page.getByRole("switch", { name: /Cabina/ }).click();
+    await page.getByRole("button", { name: "Generar buches" }).click();
+
+    await expect(page).toHaveURL(/\/moviles\/movil-1\?pestana=inventario/);
+    await expect(page.getByText("Cambios en los buches guardados.")).toBeVisible();
+    const plano = page.getByRole("figure", { name: "Plano del móvil" });
+    await expect(plano.getByRole("button", { name: "CB-1, Cabina, Operativo" })).toBeVisible();
+
+    // Cualquier usuario cambia el estado; Dañado es uno de los 4 de Figma.
+    await plano.getByRole("button", { name: /^LC-2,/ }).click();
+    await expect(page.getByRole("heading", { name: "LC-2", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Dañado", exact: true }).click();
+    await expect(page.getByText("LC-2 quedó Dañado.")).toBeVisible();
+    await expect(plano.getByRole("button", { name: "LC-2, Lado conductor, Dañado" })).toBeVisible();
+
+    // Editar: renombrar y volver al inventario con el aviso.
+    await page.getByRole("link", { name: "Editar buche", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "LC-2 · Lado conductor" })).toBeVisible();
+    await page.getByRole("textbox", { name: /Nombre/ }).fill("lc-9");
+    await page.getByRole("button", { name: "Guardar cambios" }).click();
+    await expect(page.getByText("Cambios en los buches guardados.")).toBeVisible();
+    await expect(plano.getByRole("button", { name: "LC-9, Lado conductor, Dañado" })).toBeVisible();
+
+    // Agregar: el nombre repetido se avisa en el campo.
+    await page.getByRole("link", { name: "Generar / editar buches" }).click();
+    await page.getByRole("button", { name: "Agregar buche" }).click();
+    await expect(page.getByRole("heading", { name: "Agregar buche", level: 1 })).toBeVisible();
+    await page.getByRole("textbox", { name: /Nombre/ }).fill("LA-1");
+    await page.getByRole("combobox", { name: /Zona/ }).selectOption("lado_acompanante");
+    await page.getByRole("button", { name: "Agregar buche" }).click();
+    await expect(page.getByText("Ya existe un buche con ese nombre")).toBeVisible();
+    await page.getByRole("textbox", { name: /Nombre/ }).fill("LA-3");
+    await page.getByRole("button", { name: "Agregar buche" }).click();
+    await expect(page.getByText("Cambios en los buches guardados.")).toBeVisible();
+    await expect(plano.getByRole("button", { name: "LA-3, Lado acompañante, Operativo" })).toBeVisible();
+
+    // Eliminar con confirmación.
+    await page.getByRole("link", { name: "Editar buche", exact: true }).click();
+    await page.getByRole("button", { name: "Eliminar buche" }).click();
+    await page.getByRole("dialog", { name: "¿Eliminar LA-3?" }).getByRole("button", { name: "Eliminar buche" }).click();
+    await expect(page.getByText("Cambios en los buches guardados.")).toBeVisible();
+    await expect(plano.getByRole("button", { name: /^LA-3,/ })).toHaveCount(0);
+  });
+
+  test("sin rol de automotores ve los buches y cambia su estado, pero no los configura (US17)", async ({ page, backend }) => {
+    backend.estado.compartimentos["movil-1"] = [
+      { id: "00000000-0000-4000-8000-000000000101", nombre: "LC-1", zona: "LADO_CONDUCTOR", orden: 1, estado: "OPERATIVO" },
+      { id: "00000000-0000-4000-8000-000000000102", nombre: "LA-1", zona: "LADO_ACOMPANANTE", orden: 1, estado: "OPERATIVO" },
+    ];
+    await abrirConSesion(page, "/moviles/movil-1?pestana=inventario", ["COMUN"]);
+
+    await expect(page.getByText(/Solo el encargado de automotores puede configurar los buches/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Generar / editar buches" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Editar buche", exact: true })).toBeDisabled();
+
+    await page.getByRole("button", { name: "Fuera de uso", exact: true }).click();
+    await expect(page.getByText("LC-1 quedó Fuera de uso.")).toBeVisible();
+
+    await page.goto("/moviles/movil-1/buches");
+    await expect(page).toHaveURL(/\/moviles\/movil-1\?pestana=inventario/);
+  });
+
   test("crea un móvil con el formulario y muestra el aviso en la lista", async ({ page }) => {
     await abrirConSesion(page, "/moviles/nuevo");
 
