@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,15 +6,28 @@ import { crearRouter } from "@/app/router";
 import { guardarToken } from "@/features/auth/session";
 import { ErrorApi } from "@/lib/http";
 import type { Usuario } from "../domain/usuario";
-import { actualizarUsuario, obtenerUsuario } from "../api/usuariosApi";
+import {
+  actualizarUsuario,
+  darDeBajaUsuario,
+  obtenerUsuario,
+  reactivarUsuario,
+} from "../api/usuariosApi";
 
 vi.mock("../api/usuariosApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api/usuariosApi")>();
-  return { ...actual, obtenerUsuario: vi.fn(), actualizarUsuario: vi.fn() };
+  return {
+    ...actual,
+    obtenerUsuario: vi.fn(),
+    actualizarUsuario: vi.fn(),
+    darDeBajaUsuario: vi.fn(),
+    reactivarUsuario: vi.fn(),
+  };
 });
 
 const obtenerMock = vi.mocked(obtenerUsuario);
 const actualizarMock = vi.mocked(actualizarUsuario);
+const bajaMock = vi.mocked(darDeBajaUsuario);
+const reactivarMock = vi.mocked(reactivarUsuario);
 
 const lucia: Usuario = {
   id: "u2",
@@ -42,7 +55,11 @@ beforeEach(() => {
   window.localStorage.clear();
   obtenerMock.mockReset();
   actualizarMock.mockReset();
+  bajaMock.mockReset();
+  reactivarMock.mockReset();
 });
+
+const inactiva: Usuario = { ...lucia, activo: false };
 
 describe("UsuarioFichaPage", () => {
   it("muestra el estado de carga", async () => {
@@ -164,5 +181,99 @@ describe("UsuarioFichaPage", () => {
     expect(await screen.findByText("El correo ya está en uso")).toBeInTheDocument();
     expect(screen.getByLabelText(/^Correo electrónico/)).toHaveFocus();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+describe("UsuarioFichaPage: baja y reactivación", () => {
+  it("muestra Dar de baja para un usuario activo y abre el modal de confirmación", async () => {
+    guardarToken(tokenAdmin());
+    obtenerMock.mockResolvedValue(lucia);
+
+    renderApp("/usuarios/u2");
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Dar de baja" }));
+
+    const dialogo = screen.getByRole("dialog");
+    expect(within(dialogo).getByRole("heading", { name: "¿Deseás dar de baja el usuario?" })).toBeInTheDocument();
+    expect(within(dialogo).getByText(/Lucía Ríos/)).toBeInTheDocument();
+    expect(within(dialogo).getByRole("button", { name: "Sí, dar de baja" })).toBeInTheDocument();
+    expect(bajaMock).not.toHaveBeenCalled();
+
+    await user.click(within(dialogo).getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByRole("heading", { name: "¿Deseás dar de baja el usuario?" })).not.toBeInTheDocument();
+    expect(bajaMock).not.toHaveBeenCalled();
+  });
+
+  it("da de baja al usuario y vuelve al listado", async () => {
+    guardarToken(tokenAdmin());
+    obtenerMock.mockResolvedValue(lucia);
+    bajaMock.mockResolvedValue(undefined);
+
+    const history = renderApp("/usuarios/u2");
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Dar de baja" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Sí, dar de baja" }));
+
+    await waitFor(() => expect(bajaMock).toHaveBeenCalledWith("u2"));
+    await waitFor(() => expect(history.location.pathname).toBe("/usuarios"));
+  });
+
+  it("muestra el error si falla la baja y se queda en el detalle", async () => {
+    guardarToken(tokenAdmin());
+    obtenerMock.mockResolvedValue(lucia);
+    bajaMock.mockRejectedValue(new ErrorApi(500, "Solo un administrador puede dar de baja"));
+
+    const history = renderApp("/usuarios/u2");
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Dar de baja" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Sí, dar de baja" }));
+
+    const dialogo = screen.getByRole("dialog");
+    expect(await within(dialogo).findByRole("alert")).toHaveTextContent("Solo un administrador puede dar de baja");
+    expect(history.location.pathname).toBe("/usuarios/u2");
+    expect(within(dialogo).getByRole("button", { name: "Sí, dar de baja" })).toBeEnabled();
+  });
+
+  it("muestra Reactivar en lugar de Dar de baja cuando el usuario está inactivo", async () => {
+    guardarToken(tokenAdmin());
+    obtenerMock.mockResolvedValue(inactiva);
+
+    renderApp("/usuarios/u2");
+
+    expect(await screen.findByRole("button", { name: "Reactivar usuario" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Dar de baja" })).not.toBeInTheDocument();
+  });
+
+  it("reactiva al usuario y vuelve a mostrar las acciones de un usuario activo", async () => {
+    guardarToken(tokenAdmin());
+    obtenerMock.mockResolvedValueOnce(inactiva).mockResolvedValueOnce(lucia);
+    reactivarMock.mockResolvedValue(undefined);
+
+    renderApp("/usuarios/u2");
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Reactivar usuario" }));
+
+    await waitFor(() => expect(reactivarMock).toHaveBeenCalledWith("u2"));
+    expect(await screen.findByRole("button", { name: "Dar de baja" })).toBeInTheDocument();
+    expect(obtenerMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("muestra el error si falla la reactivación", async () => {
+    guardarToken(tokenAdmin());
+    obtenerMock.mockResolvedValue(inactiva);
+    reactivarMock.mockRejectedValue(new ErrorApi(500, "No pudimos reactivar el usuario."));
+
+    renderApp("/usuarios/u2");
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Reactivar usuario" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos reactivar el usuario.");
+    expect(screen.getByRole("button", { name: "Reactivar usuario" })).toBeInTheDocument();
   });
 });

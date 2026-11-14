@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { http } from "@/lib/http";
-import { crearUsuario, listarUsuarios, reenviarBienvenida } from "./usuariosApi";
+import {
+  crearUsuario,
+  darDeBajaUsuario,
+  listarUsuarios,
+  reactivarUsuario,
+  reenviarBienvenida,
+} from "./usuariosApi";
 
 describe("usuariosApi", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -68,5 +74,21 @@ describe("usuariosApi", () => {
     await reenviarBienvenida("u 1");
 
     expect(post).toHaveBeenCalledWith("/users/u%201/reenviar-bienvenida");
+  });
+
+  it("da de baja al usuario con DELETE /users/:id", async () => {
+    const eliminar = vi.spyOn(http, "delete").mockResolvedValue({ data: { message: "ok" } });
+
+    await darDeBajaUsuario("u 2");
+
+    expect(eliminar).toHaveBeenCalledWith("/users/u%202");
+  });
+
+  it("reactiva al usuario con PATCH /users/:id/reactivar", async () => {
+    const patch = vi.spyOn(http, "patch").mockResolvedValue({ data: { message: "ok" } });
+
+    await reactivarUsuario("u 2");
+
+    expect(patch).toHaveBeenCalledWith("/users/u%202/reactivar");
   });
 });

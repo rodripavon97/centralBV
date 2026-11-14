@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, CircleX, Pencil, RotateCcw, SearchX } from "lucide-react";
+import { ArrowLeft, CircleX, Pencil, RotateCcw, SearchX, UserCheck, UserX } from "lucide-react";
+import { Alert } from "@/components/centralbv/Alert";
 import { Button, ButtonLink } from "@/components/centralbv/Button";
 import { EmptyState } from "@/components/centralbv/EmptyState";
 import { focus } from "@/components/centralbv/estilos";
-import { actualizarUsuario, obtenerUsuario } from "../api/usuariosApi";
+import { actualizarUsuario, darDeBajaUsuario, obtenerUsuario, reactivarUsuario } from "../api/usuariosApi";
 import { ROLES_USUARIO, type RolUsuario } from "../domain/usuario";
 import { useConsulta } from "../../constancias/hooks/useConsulta";
+import BajaUsuarioDialog from "../components/BajaUsuarioDialog";
 import UsuarioForm from "../components/UsuarioForm";
 
 type ModoFicha = "editar" | "detalle";
@@ -13,6 +16,27 @@ type ModoFicha = "editar" | "detalle";
 export default function UsuarioFichaPage({ id, modo }: { id: string; modo: ModoFicha }) {
   const navigate = useNavigate();
   const { consulta, reintentar } = useConsulta(id, () => obtenerUsuario(id));
+  const [bajaAbierta, setBajaAbierta] = useState(false);
+  const [reactivando, setReactivando] = useState(false);
+  const [errorReactivar, setErrorReactivar] = useState<string>();
+
+  const darDeBaja = async () => {
+    await darDeBajaUsuario(id);
+    await navigate({ to: "/usuarios" });
+  };
+
+  const reactivar = async () => {
+    setReactivando(true);
+    setErrorReactivar(undefined);
+    try {
+      await reactivarUsuario(id);
+      reintentar();
+    } catch (error) {
+      setErrorReactivar(error instanceof Error ? error.message : "No pudimos reactivar el usuario.");
+    } finally {
+      setReactivando(false);
+    }
+  };
 
   if (consulta.estado === "cargando") return <p role="status" className="text-sm text-text-muted">Cargando usuario…</p>;
   if (consulta.estado === "error") {
@@ -50,9 +74,24 @@ export default function UsuarioFichaPage({ id, modo }: { id: string; modo: ModoF
             <h1 id="titulo-usuario" className="text-xl font-semibold">{modo === "editar" ? "Editar usuario" : "Detalle del usuario"}</h1>
             <p className="text-sm text-text-muted">{modo === "editar" ? "Modificá los datos y el rol asignado." : "Consultá los datos del usuario."}</p>
           </div>
-          {modo === "detalle" && <ButtonLink to="/usuarios/$id/editar" params={{ id }}><Pencil size={16} strokeWidth={1.5} aria-hidden />Editar</ButtonLink>}
+          {modo === "detalle" && (
+            <div className="flex flex-wrap items-center gap-3">
+              <ButtonLink to="/usuarios/$id/editar" params={{ id }}><Pencil size={16} strokeWidth={1.5} aria-hidden />Editar</ButtonLink>
+              {usuario.activo ? (
+                <Button variant="danger" onClick={() => setBajaAbierta(true)}>
+                  <UserX size={16} strokeWidth={1.5} aria-hidden />Dar de baja
+                </Button>
+              ) : (
+                <Button variant="success" disabled={reactivando} onClick={() => void reactivar()}>
+                  <UserCheck size={16} strokeWidth={1.5} aria-hidden />
+                  {reactivando ? "Reactivando…" : "Reactivar usuario"}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </header>
+      {errorReactivar && <Alert tone="danger" icon={CircleX}>{errorReactivar}</Alert>}
       <UsuarioForm
         key={`${usuario.id}-${modo}`}
         modo={modo}
@@ -64,6 +103,14 @@ export default function UsuarioFichaPage({ id, modo }: { id: string; modo: ModoF
         } : undefined}
         onCancelar={volver}
       />
+      {modo === "detalle" && (
+        <BajaUsuarioDialog
+          usuario={usuario}
+          abierto={bajaAbierta}
+          onCerrar={() => setBajaAbierta(false)}
+          onConfirmar={darDeBaja}
+        />
+      )}
     </div>
   );
 }

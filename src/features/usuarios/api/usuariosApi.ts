@@ -67,6 +67,16 @@ export async function actualizarUsuario(id: string, datos: DatosEdicionUsuario):
   return desdeApi(usuario);
 }
 
+/** DELETE /users/:id: da de baja la cuenta del usuario. */
+export async function darDeBajaUsuario(id: string): Promise<void> {
+  await datosDe(http.delete(`/users/${encodeURIComponent(id)}`));
+}
+
+/** PATCH /users/:id/reactivar: vuelve a habilitar la cuenta del usuario. */
+export async function reactivarUsuario(id: string): Promise<void> {
+  await datosDe(http.patch(`/users/${encodeURIComponent(id)}/reactivar`));
+}
+
 /** Reenvía el correo de bienvenida de un usuario existente. */
 export async function reenviarBienvenida(id: string): Promise<void> {
   await datosDe(http.post(`/users/${encodeURIComponent(id)}/reenviar-bienvenida`));
