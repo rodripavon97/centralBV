@@ -1,5 +1,14 @@
-import { describe, expect, it } from "vitest";
-import { VALORES_VACIOS, datosDesdeValores, validarSolicitud, type ValoresSolicitud } from "./validacion";
+import { describe, expect, it, vi } from "vitest";
+import {
+  RegistroValidadores,
+  VALORES_VACIOS,
+  datosDesdeValores,
+  validarDni,
+  validarPatenteVehiculo,
+  validarSolicitud,
+  validarTelefono,
+  type ValoresSolicitud,
+} from "./validacion";
 
 const validos: ValoresSolicitud = {
   nombre: "Lucía Fernández",
@@ -49,14 +58,50 @@ describe("validarSolicitud (US08)", () => {
     const errores = validarSolicitud({ ...validos, dni: "30.112", telefono: "abc", fecha: "2026-10-11", hora: "25:00" });
     expect(errores).toMatchObject({
       dni: "Ingresá un DNI válido (7 u 8 dígitos)",
-      telefono: "Ingresá un teléfono válido",
+      telefono: "Ingresá un teléfono válido (10 dígitos)",
       fecha: "Usá el formato dd/mm/aaaa",
       hora: "Usá el formato hh:mm",
     });
   });
 
+  it("rechaza teléfono que no tenga exactamente 10 dígitos", () => {
+    expect(validarSolicitud({ ...validos, telefono: "11 555-014" }).telefono).toBe(
+      "Ingresá un teléfono válido (10 dígitos)",
+    );
+    expect(validarSolicitud({ ...validos, telefono: "11 5555-01420" }).telefono).toBe(
+      "Ingresá un teléfono válido (10 dígitos)",
+    );
+    expect(validarSolicitud({ ...validos, telefono: "11 5555-0142" }).telefono).toBeUndefined();
+  });
+
   it("rechaza una fecha futura", () => {
     expect(validarSolicitud({ ...validos, fecha: "01/01/2999" }).fecha).toBe("La fecha no puede ser posterior a hoy");
+  });
+
+  it("acepta hoy hasta la hora actual y rechaza una hora posterior", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 13, 14, 30));
+
+    expect(validarSolicitud({ ...validos, fecha: "13/11/2026", hora: "14:30" }).hora).toBeUndefined();
+    expect(validarSolicitud({ ...validos, fecha: "13/11/2026", hora: "14:29" }).hora).toBeUndefined();
+    expect(validarSolicitud({ ...validos, fecha: "13/11/2026", hora: "14:31" }).hora).toBe(
+      "La hora no puede ser posterior a la hora actual",
+    );
+
+    vi.useRealTimers();
+  });
+
+  it("acepta cualquier hora de un día anterior", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 13, 14, 30));
+
+    expect(validarSolicitud({ ...validos, fecha: "12/11/2026", hora: "23:59" }).hora).toBeUndefined();
+
+    vi.useRealTimers();
+  });
+
+  it("no compara la hora cuando la fecha todavía no es válida", () => {
+    expect(validarSolicitud({ ...validos, fecha: "", hora: "23:59" }).hora).toBeUndefined();
   });
 
   it("exige patente para un vehículo y póliza para un seguro", () => {
@@ -68,6 +113,37 @@ describe("validarSolicitud (US08)", () => {
     });
   });
 });
+
+describe("Patrón Strategy + Registry", () => {
+  it("permite ejecutar estrategias de forma unitaria e independiente", () => {
+    expect(validarTelefono("11 5555-0142", validos)).toBeUndefined();
+    expect(validarTelefono("123", validos)).toBe("Ingresá un teléfono válido (10 dígitos)");
+    expect(validarDni("abc", validos)).toBe("Ingresá un DNI válido (7 u 8 dígitos)");
+    expect(validarPatenteVehiculo("", { ...validos, tipo: "vivienda" })).toBeUndefined();
+    expect(validarPatenteVehiculo("", { ...validos, tipo: "vehicular" })).toBe(
+      "La patente es obligatoria para un vehículo",
+    );
+  });
+
+  it("permite registrar y validar mediante RegistroValidadores", () => {
+    const registro = new RegistroValidadores();
+    registro.registrar("telefono", validarTelefono);
+
+    expect(registro.validarCampo("telefono", validos)).toBeUndefined();
+    expect(registro.validarCampo("telefono", { ...validos, telefono: "99" })).toBe(
+      "Ingresá un teléfono válido (10 dígitos)",
+    );
+  });
+
+  it("permite extender o sobrescribir estrategias en un registro", () => {
+    const registro = new RegistroValidadores();
+    registro.registrar("nombre", (valor) => (valor === "Admin" ? "Nombre reservado" : undefined));
+
+    expect(registro.validarCampo("nombre", { ...validos, nombre: "Admin" })).toBe("Nombre reservado");
+    expect(registro.validarCampo("nombre", { ...validos, nombre: "Lucía" })).toBeUndefined();
+  });
+});
+
 
 describe("datosDesdeValores", () => {
   it("deja el DNI solo con dígitos, la fecha y la hora normalizadas y los opcionales vacíos sin valor", () => {
@@ -97,3 +173,4 @@ describe("datosDesdeValores", () => {
     });
   });
 });
+

@@ -4,13 +4,16 @@ import { describe, expect, it, vi } from "vitest";
 import SolicitudForm from "./SolicitudForm";
 import type { DatosSolicitud } from "../domain/validacion";
 
-async function completarFormulario(user: ReturnType<typeof userEvent.setup>) {
+async function completarFormulario(
+  user: ReturnType<typeof userEvent.setup>,
+  { fecha = "10/10/2026", hora = "18:20" }: { fecha?: string; hora?: string } = {},
+) {
   await user.type(screen.getByLabelText(/^Nombre y apellido/), "  Lucía   Fernández ");
   await user.type(screen.getByLabelText(/^DNI/), "30.112.456");
   await user.type(screen.getByLabelText(/^Teléfono/), "11 5555-1234");
   await user.selectOptions(screen.getByLabelText(/^Tipo de siniestro/), "vivienda");
-  await user.type(screen.getByLabelText(/^Fecha/), "10/10/2026");
-  await user.type(screen.getByLabelText(/^Hora/), "18:20");
+  await user.type(screen.getByLabelText(/^Fecha/), fecha);
+  await user.type(screen.getByLabelText(/^Hora/), hora);
   await user.type(screen.getByLabelText(/^Domicilio del hecho/), "San Martín 450");
   await user.type(screen.getByLabelText(/^N.º de parte/), "P-1");
   await user.type(screen.getByLabelText(/^Motivo/), "Incendio de cocina");
@@ -54,8 +57,28 @@ describe("SolicitudForm", () => {
     expect(screen.getByLabelText(/^Nombre y apellido/)).toHaveFocus();
     expect(screen.getAllByText("Este campo es obligatorio").length).toBeGreaterThan(0);
 
-    await user.type(screen.getByLabelText(/^Teléfono/), "abc");
-    expect(screen.getByText("Ingresá un teléfono válido")).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/^Teléfono/), "12345");
+    expect(screen.getByText("Ingresá un teléfono válido (10 dígitos)")).toBeInTheDocument();
+  });
+
+  it("no deja guardar una hora futura si el siniestro es de hoy", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(2026, 10, 13, 14, 30));
+
+    try {
+      const user = userEvent.setup();
+      const onGuardar = vi.fn();
+      render(<SolicitudForm textoGuardar="Guardar solicitud" onGuardar={onGuardar} onCancelar={vi.fn()} />);
+
+      await completarFormulario(user, { fecha: "13/11/2026", hora: "14:31" });
+      await user.click(screen.getByRole("button", { name: "Guardar solicitud" }));
+
+      expect(onGuardar).not.toHaveBeenCalled();
+      expect(screen.getByText("La hora no puede ser posterior a la hora actual")).toBeInTheDocument();
+      expect(screen.getByLabelText(/^Hora/)).toHaveFocus();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("envía los datos normalizados cuando el formulario es válido", async () => {
@@ -144,5 +167,18 @@ describe("SolicitudForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(onCancelar).toHaveBeenCalledTimes(1);
+  });
+
+  it("no permite ingresar letras en DNI ni en teléfono", async () => {
+    const user = userEvent.setup();
+    render(<SolicitudForm textoGuardar="Guardar solicitud" onGuardar={vi.fn()} onCancelar={vi.fn()} />);
+
+    const inputDni = screen.getByLabelText(/^DNI/);
+    await user.type(inputDni, "30abc112def.456");
+    expect(inputDni).toHaveValue("30112.456");
+
+    const inputTel = screen.getByLabelText(/^Teléfono/);
+    await user.type(inputTel, "11abc 5555-def1234");
+    expect(inputTel).toHaveValue("11 5555-1234");
   });
 });

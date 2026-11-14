@@ -1,0 +1,120 @@
+/* Calendario de react-calendar pintado con la paleta de tokens.css.
+   El CSS base del paquete se importa en styles/index.css; acá solo se
+   reemplazan colores, tipografía y radios. Sin sombras. */
+
+.react-calendar {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  line-height: 1.25;
+}
+
+.react-calendar button {
+  border-radius: var(--radius-md);
+  color: inherit;
+  font: inherit;
+}
+
+.react-calendar__navigation {
+  height: 2.75rem;
+  margin-bottom: 0.25rem;
+  align-items: center;
+}
+
+.react-calendar__navigation button {
+  min-width: 2.75rem;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.react-calendar__navigation button:enabled:hover,
+.react-calendar__navigation button:enabled:focus {
+  background: var(--color-bg-raised);
+  color: var(--color-text-primary);
+}
+
+.react-calendar__navigation button:disabled {
+  background: transparent;
+  color: var(--color-text-disabled);
+}
+
+.react-calendar__month-view__weekdays {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.react-calendar__month-view__weekdays__weekday {
+  padding: 0.375rem 0;
+}
+
+.react-calendar__month-view__weekdays abbr {
+  text-decoration: none;
+  cursor: default;
+}
+
+.react-calendar__tile {
+  min-height: 2.75rem; /* 44px: objetivo táctil cómodo en móvil */
+  padding: 0.5rem 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 768px) {
+  .react-calendar__tile {
+    min-height: 2rem;
+  }
+}
+
+.react-calendar__tile:enabled:hover,
+.react-calendar__tile:enabled:focus {
+  background: var(--color-bg-raised);
+}
+
+.react-calendar__month-view__days__day--weekend {
+  color: inherit;
+}
+
+.react-calendar__month-view__days__day--neighboringMonth {
+  color: var(--color-text-disabled);
+}
+
+/* Hoy: borde de acento. Elegido: relleno de acento (elemento activo). */
+.react-calendar__tile--now {
+  background: transparent;
+  outline: 1px solid var(--color-accent-text);
+  outline-offset: -1px;
+}
+
+.react-calendar__tile--now:enabled:hover,
+.react-calendar__tile--now:enabled:focus {
+  background: var(--color-bg-raised);
+}
+
+.react-calendar__tile--active,
+.react-calendar__tile--active:enabled:hover,
+.react-calendar__tile--active:enabled:focus {
+  background: var(--color-accent-fill);
+  color: var(--color-white);
+}
+
+.react-calendar__tile:disabled,
+.react-calendar__month-view__days__day--neighboringMonth:disabled {
+  background: transparent;
+  color: var(--color-text-disabled);
+}
+
+.react-calendar__tile:focus-visible,
+.react-calendar__navigation button:focus-visible {
+  outline: 2px solid var(--color-accent-text);
+  outline-offset: 2px;
+}
