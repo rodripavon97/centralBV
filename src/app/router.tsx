@@ -13,6 +13,7 @@ import { RecuperarEnviadoPage } from "@/features/auth/pages/RecuperarEnviadoPage
 import { RestablecerContrasenaPage } from "@/features/auth/pages/RestablecerContrasenaPage";
 import { recuperacionCompletada } from "@/features/auth/recuperacion";
 import { leerSesion, tieneRol } from "@/features/auth/session";
+import { rutaInternaSegura } from "@/features/auth/domain/volverA";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { validarBusquedaSolicitudes } from "@/features/constancias/domain/busqueda";
 import { validarBusquedaFlota } from "@/features/moviles/domain/flota";
@@ -61,13 +62,16 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
   validateSearch: (search: Record<string, unknown>) => search,
-  beforeLoad: ({ search }) => {
+  beforeLoad: ({ search, location }) => {
     if (leerSesion().estado === "activa") {
+      const destino = rutaInternaSegura(location.state.volverA);
+      // Path interno libre (deep link); el union tipado de `to` no lo cubre.
+      if (destino) throw redirect({ to: destino as "/dashboard" });
       throw redirect({ to: "/dashboard" });
     }
     // Limpia enlaces viejos con ?sesionVencida=...: ese dato no va en la URL.
     if ("sesionVencida" in search) {
-      throw redirect({ to: "/login", replace: true });
+      throw redirect({ to: "/login", replace: true, state: location.state });
     }
   },
   component: LoginRoutePage,
@@ -124,10 +128,17 @@ const contrasenaRestablecidaRoute = createRoute({
 const appRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "app",
-  beforeLoad: () => {
+  beforeLoad: ({ location }) => {
     const { estado } = leerSesion();
     if (estado !== "activa") {
-      throw redirect({ to: "/login", state: { sesionVencida: estado === "vencida" } });
+      throw redirect({
+        to: "/login",
+        state: {
+          sesionVencida: estado === "vencida",
+          // Path pedido (QR, deep link): tras el login se vuelve acá.
+          volverA: location.href,
+        },
+      });
     }
   },
   component: AppLayout,
@@ -328,7 +339,7 @@ declare module "@tanstack/history" {
     editada?: boolean;
     entregada?: string; // número de la solicitud recién entregada (US12)
     sesionVencida?: boolean; // la sesión expiró y hay que avisarlo en el login
-    volverA?: string; // a dónde volver después de iniciar sesión, si la sesión venció en otra pantalla
+    volverA?: string; // ruta interna a la que volver tras el login (p.ej. QR → revisión)
     movilCreado?: string; // denominación del móvil recién creado (US04)
     movilEditado?: boolean; // aviso al volver a la ficha tras editar (US48)
     listaMoviles?: BusquedaMoviles; // búsqueda de la lista, para volver desde la ficha (US06)
@@ -336,4 +347,4 @@ declare module "@tanstack/history" {
     usuarioCreado?: string; // correo del usuario recién creado
     buchesGuardados?: boolean; // aviso al volver al inventario tras generar o editar buches (US17)
   }
-}
+}
