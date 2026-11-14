@@ -694,16 +694,17 @@ function manejar(backend: Backend, route: Route): Promise<unknown> {
     if (!encontrado) return error(route, 404, "Usuario no encontrado");
     if (metodo === "GET") return json(route, 200, encontrado);
     if (metodo === "PATCH") {
-      const cuerpo = peticion.postDataJSON() as {
+      /* PATCH es parcial: el formulario manda solo los campos modificados. */
+      const cuerpo = (peticion.postDataJSON() ?? {}) as Partial<{
         nombre: string;
         apellido: string;
         email: string;
         roleName: string;
-      };
-      encontrado.nombre = cuerpo.nombre;
-      encontrado.apellido = cuerpo.apellido;
-      encontrado.email = cuerpo.email;
-      encontrado.roles = [cuerpo.roleName.toUpperCase()];
+      }>;
+      if (cuerpo.nombre !== undefined) encontrado.nombre = cuerpo.nombre;
+      if (cuerpo.apellido !== undefined) encontrado.apellido = cuerpo.apellido;
+      if (cuerpo.email !== undefined) encontrado.email = cuerpo.email;
+      if (cuerpo.roleName) encontrado.roles = [cuerpo.roleName.toUpperCase()];
       return json(route, 200, encontrado);
     }
   }
