@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { http } from "@/lib/http";
 import {
+  actualizarUsuario,
   crearUsuario,
   darDeBajaUsuario,
   listarUsuarios,
@@ -66,6 +67,16 @@ describe("usuariosApi", () => {
       password: "Cuartel2026",
       roleName: "comun",
     });
+  });
+
+  it("actualiza el usuario enviando solo los campos recibidos", async () => {
+    const patch = vi.spyOn(http, "patch").mockResolvedValue({
+      data: { id: "u2", email: "lrios@bomberos.org", nombre: "Lucía María", apellido: "Ríos", activo: true },
+    });
+
+    await actualizarUsuario("u2", { nombre: "Lucía María" });
+
+    expect(patch).toHaveBeenCalledWith("/users/u2", { nombre: "Lucía María" });
   });
 
   it("reenvía el correo de bienvenida del usuario", async () => {

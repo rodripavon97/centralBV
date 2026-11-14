@@ -62,7 +62,7 @@ export async function crearUsuario(datos: DatosUsuario): Promise<CrearUsuarioApi
   return datosDe(http.post<CrearUsuarioApi>("/users", datos));
 }
 
-export async function actualizarUsuario(id: string, datos: DatosEdicionUsuario): Promise<Usuario> {
+export async function actualizarUsuario(id: string, datos: Partial<DatosEdicionUsuario>): Promise<Usuario> {
   const usuario = await datosDe(http.patch<UsuarioApi>(`/users/${encodeURIComponent(id)}`, datos));
   return desdeApi(usuario);
 }

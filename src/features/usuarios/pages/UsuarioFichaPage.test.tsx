@@ -133,11 +133,21 @@ describe("UsuarioFichaPage", () => {
     await waitFor(() => expect(actualizarMock).toHaveBeenCalledTimes(1));
     expect(actualizarMock).toHaveBeenCalledWith("u2", {
       nombre: "Lucía María",
-      apellido: "Ríos",
-      email: "lrios@bomberos.org",
-      roleName: "administrativo",
     });
     await waitFor(() => expect(history.location.pathname).toBe("/usuarios/u2"));
+  });
+
+  it("no envía el PATCH si no se modificó ningún campo", async () => {
+    guardarToken(tokenAdmin());
+    obtenerMock.mockResolvedValue(lucia);
+
+    const history = renderApp("/usuarios/u2/editar");
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => expect(history.location.pathname).toBe("/usuarios/u2"));
+    expect(actualizarMock).not.toHaveBeenCalled();
   });
 
   it("cancelar la edición vuelve al listado sin guardar", async () => {
@@ -162,10 +172,13 @@ describe("UsuarioFichaPage", () => {
     renderApp("/usuarios/u2/editar");
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Guardar cambios" }));
+    const nombre = await screen.findByLabelText(/^Nombre/);
+    await user.clear(nombre);
+    await user.type(nombre, "Lucía María");
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos guardar el usuario.");
-    expect(screen.getByLabelText(/^Nombre/)).toHaveValue("Lucía");
+    expect(screen.getByLabelText(/^Nombre/)).toHaveValue("Lucía María");
   });
 
   it("marca el correo duplicado y enfoca el campo email", async () => {
@@ -176,7 +189,10 @@ describe("UsuarioFichaPage", () => {
     renderApp("/usuarios/u2/editar");
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Guardar cambios" }));
+    const email = await screen.findByLabelText(/^Correo electrónico/);
+    await user.clear(email);
+    await user.type(email, "otro@bomberos.org");
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     expect(await screen.findByText("El correo ya está en uso")).toBeInTheDocument();
     expect(screen.getByLabelText(/^Correo electrónico/)).toHaveFocus();

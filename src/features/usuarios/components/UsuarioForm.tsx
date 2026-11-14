@@ -25,7 +25,7 @@ export default function UsuarioForm({
   inicial,
   modo = "crear",
 }: {
-  onGuardar?: (datos: DatosUsuario | DatosEdicionUsuario) => Promise<void>;
+  onGuardar?: (datos: DatosUsuario | Partial<DatosEdicionUsuario>) => Promise<void>;
   onCancelar?: () => void;
   inicial?: Partial<ValoresUsuario>;
   modo?: "crear" | "editar" | "detalle";
@@ -68,7 +68,7 @@ export default function UsuarioForm({
 
     setGuardando(true);
     try {
-      await onGuardar?.(esAlta ? datosDesdeValores(valores) : datosEditadosDesdeValores(valores));
+      await onGuardar?.(esAlta ? datosDesdeValores(valores) : datosEditadosDesdeValores(valores, inicial));
     } catch (error) {
       if (error instanceof ErrorApi && error.status === 409) {
         setErrorEmail(error.message || "Ya existe un usuario con ese correo electrónico.");
