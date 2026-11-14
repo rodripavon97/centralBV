@@ -30,6 +30,13 @@ centralBV/
 │  │  ├─ react.svg              Sin uso (resto del template)
 │  │  └─ vite.svg               Sin uso (resto del template)
 │  │
+│  ├─ demo/                     Modo demo (US58): /demo sin login ni back real
+│  │  ├─ backSimulado.ts        Back en memoria (endpoints y reglas); lo comparten la demo y los E2E
+│  │  ├─ datosEjemplo.ts        Datos de ejemplo genéricos (móviles, buches, revisiones, solicitudes, usuarios)
+│  │  ├─ modoDemo.ts            Flag, sesión demo, persistencia en localStorage, Reiniciar y Salir
+│  │  ├─ adaptadorDemo.ts       Adapter de axios: con el flag, responde el back simulado
+│  │  └─ AvisoModoDemo.tsx      Aviso fijo "Modo demo" con Reiniciar datos y Salir
+│  │
 │  ├─ components/               Componentes reutilizables entre features
 │  │  └─ centralbv/             Componentes propios de la app
 │  │     ├─ Alert.tsx           Aviso con tono danger/info/ok/neutral
@@ -77,6 +84,9 @@ centralBV/
 │  │  │  │                          MarcarEntregadaDialog
 │  │  │  ├─ hooks/
 │  │  │  │  └─ useConsulta.ts       Carga asíncrona con estados cargando/error/listo
+│  │  │  ├─ pdf/
+│  │  │  │  └─ pdfConstancia.ts     PDF de la constancia con jsPDF (lo usa el modo demo)
+│  │  │  ├─ institucion.ts          Datos del cuartel para la constancia: real y demo (US58)
 │  │  │  └─ pages/                  Listado, alta, detalle, edición y generación
 │  │  │
 │  │  ├─ dashboard/
@@ -226,6 +236,7 @@ pages / components  →  hooks  →  domain
 | `/moviles/$id/revision` | Requiere sesión activa | `RegistrarRevisionPage` (US07) |
 | `/moviles/$id/buches/generar` | AUTOMOTORES (ADMIN siempre); si no, vuelve al inventario | `GenerarBuchesPage` (US17) |
 | `/moviles/$id/buches` | AUTOMOTORES (ADMIN siempre); si no, vuelve al inventario | `EditarBuchesPage` (US17, `?buche=<id>`) |
+| `/demo` | Pública; activa el modo demo (US58) y redirige a `/dashboard` | — |
 | `/guia` | Pública (demo de diseño y prototipo) | `Guia` |
 
 Las rutas con sesión cuelgan de una ruta sin path (`id: "app"`) que tiene el guard y el `AppLayout`; por eso sus ids son `/app/...` (por ejemplo, `getRouteApi("/app/solicitudes")`).
@@ -239,11 +250,13 @@ Flujo de autenticación:
 5. El botón "Cerrar sesión" del riel borra el token.
 6. Recuperación (US03): `/recuperar-contrasena` llama a `POST /auth/forgot-password`; el correo trae un enlace que cae en `/restablecer-contrasena` (o `/update-password`) con el token en el hash. El token se guarda en `sessionStorage` y se limpia de la URL; al restablecer se llama a `POST /auth/reset-password` y se marca como usado para que reabrir el enlace muestre "El enlace ya no es válido".
 
+Modo demo (US58): `/demo` guarda `centralbv.demo = "1"`, crea una sesión del "Usuario demo" con todos los roles (vence a los 30 días) y redirige a `/dashboard`. Mientras el flag está activo, el guard vuelve a crear la sesión demo si se perdió y "Cerrar sesión" también sale del modo demo. Detalle en [flujos.md](./flujos.md#8-modo-demo-us58).
+
 El token se guarda en `localStorage` con la clave `centralbv.token`. La API se configura con `VITE_API_URL` y por defecto apunta a `http://localhost:3000`.
 
 ## Datos y backend
 
-- `src/lib/http.ts` es el único lugar donde se crea el cliente Axios.
+- `src/lib/http.ts` es el único lugar donde se crea el cliente Axios. Su adapter (`src/demo/adaptadorDemo.ts`) manda cada pedido al back simulado si está el flag de demo; si no, axios sale a la red como siempre.
 - Cada feature tiene su `api/` y llama a `http`, sin crear clientes propios.
 - El modelo de datos del cuartel (vehículos, zonas, compartimentos, inspecciones) está en `src/types/dominio.ts`.
 - Los nombres del dominio van en español (`Vehiculo`, `Compartimento`, `Inspeccion`); la infraestructura y utilidades, en inglés.
@@ -261,6 +274,7 @@ El token se guarda en `localStorage` con la clave `centralbv.token`. La API se c
 - Configuración: `vitest.config.ts`; setup global en `src/test/setup.ts` (limpia el DOM y `localStorage` después de cada test).
 - Los tests viven junto al código, con sufijo `.test.tsx`.
 - Para rutas conviene usar `crearRouter(createMemoryHistory(...))`, como en `LoginPage.test.tsx`.
+- E2E (Playwright, `tests/e2e`): `fixtures/api.ts` intercepta `http://localhost:3000/**` y lo resuelve con `src/demo/backSimulado.ts`, el mismo back simulado de la demo. Las reglas de un endpoint se cambian en un solo lugar; los datos de prueba de los E2E siguen en el fixture.
 
 ## Scripts
 

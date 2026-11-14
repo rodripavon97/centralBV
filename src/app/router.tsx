@@ -12,6 +12,7 @@ import { RecuperarContrasenaPage } from "@/features/auth/pages/RecuperarContrase
 import { RecuperarEnviadoPage } from "@/features/auth/pages/RecuperarEnviadoPage";
 import { RestablecerContrasenaPage } from "@/features/auth/pages/RestablecerContrasenaPage";
 import { recuperacionCompletada } from "@/features/auth/recuperacion";
+import { activarModoDemo, esModoDemo } from "@/demo/modoDemo";
 import { leerSesion, tieneRol } from "@/features/auth/session";
 import { rutaInternaSegura } from "@/features/auth/domain/volverA";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
@@ -124,12 +125,28 @@ const contrasenaRestablecidaRoute = createRoute({
   component: ContrasenaRestablecidaPage,
 });
 
+/* US58: modo demo para la presentación (QR). Entra sin login con el usuario demo,
+   que tiene todos los roles, y todo lo responde el back simulado del navegador. */
+const demoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/demo",
+  beforeLoad: () => {
+    activarModoDemo();
+    throw redirect({ to: "/dashboard" });
+  },
+});
+
 // Rutas con sesión: comparten el guard y el riel de navegación.
 const appRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "app",
   beforeLoad: ({ location }) => {
     const { estado } = leerSesion();
+    // En la demo no hay login: si la sesión demo se perdió, se vuelve a crear.
+    if (estado !== "activa" && esModoDemo()) {
+      activarModoDemo();
+      return;
+    }
     if (estado !== "activa") {
       throw redirect({
         to: "/login",
@@ -298,6 +315,7 @@ const routeTree = rootRoute.addChildren([
   restablecerContrasenaRoute,
   actualizarContrasenaRoute,
   contrasenaRestablecidaRoute,
+  demoRoute,
   appRoute.addChildren([
     dashboardRoute,
     solicitudesRoute,
@@ -347,4 +365,4 @@ declare module "@tanstack/history" {
     usuarioCreado?: string; // correo del usuario recién creado
     buchesGuardados?: boolean; // aviso al volver al inventario tras generar o editar buches (US17)
   }
-}
+}

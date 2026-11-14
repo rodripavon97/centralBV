@@ -1,8 +1,11 @@
 import axios from "axios";
+import { crearAdaptador } from "@/demo/adaptadorDemo";
 
 export const http = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:3000",
   headers: { "Content-Type": "application/json" },
+  // US58: en modo demo los pedidos los responde el back simulado del navegador.
+  adapter: crearAdaptador(),
 });
 
 /** Error de la API con el código HTTP y un mensaje listo para mostrar.

@@ -92,8 +92,9 @@ export function formatearInstante(iso: string) {
   return formatearFechaHora(fecha, hora);
 }
 
-/** "JOSÉ C. PAZ, 12 DE OCTUBRE DE 2026." con la fecha de hoy en Argentina. */
-export function fechaEmision(fecha = new Date()) {
+/** "JOSÉ C. PAZ, 12 DE OCTUBRE DE 2026." con la fecha de hoy en Argentina.
+    La localidad sale de los datos de la institución (en modo demo es genérica). */
+export function fechaEmision(fecha = new Date(), localidad = "JOSÉ C. PAZ") {
   const partes = new Intl.DateTimeFormat("es-AR", {
     timeZone: "America/Argentina/Buenos_Aires",
     day: "numeric",
@@ -101,5 +102,5 @@ export function fechaEmision(fecha = new Date()) {
     year: "numeric",
   }).formatToParts(fecha);
   const valor = (tipo: Intl.DateTimeFormatPartTypes) => Number(partes.find((p) => p.type === tipo)?.value);
-  return `JOSÉ C. PAZ, ${valor("day")} DE ${MESES[valor("month") - 1]} DE ${valor("year")}.`;
+  return `${localidad}, ${valor("day")} DE ${MESES[valor("month") - 1]} DE ${valor("year")}.`;
 }
