@@ -1,6 +1,4 @@
 import type { ReactNode } from "react";
-import { PanelsTopLeft } from "lucide-react";
-import { EmptyState } from "@/components/centralbv/EmptyState";
 import { formatearPatente } from "../domain/patente";
 import type { MovilFlota } from "../domain/movil";
 import {
@@ -14,7 +12,7 @@ import {
 import BadgeVerificacion from "./BadgeVerificacion";
 import EstadoMovilBadge from "./EstadoMovilBadge";
 
-/* Contenido de cada pestaña de la ficha (Figma S4). Inventario llega con US17 (Release 2);
+/* Contenido de cada pestaña de la ficha (Figma S4). Inventario (US17) está en PanelInventario;
    Revisiones (US07) está en PanelRevisiones y usa DetalleRevision. El bloque de mantenimiento y
    documentación de Figma (VTV, seguro, service, kilometraje) quedó fuera del MVP. */
 
@@ -62,17 +60,6 @@ export function PanelDatosGenerales({ movil }: { movil: MovilFlota }) {
         )}
       </dl>
     </Tarjeta>
-  );
-}
-
-export function PanelInventario() {
-  return (
-    <EmptyState
-      compacto
-      icon={PanelsTopLeft}
-      title="Este móvil todavía no tiene buches"
-      description="Cuando se generen los buches según la distribución del móvil, vas a ver acá el inventario asignado."
-    />
   );
 }
 

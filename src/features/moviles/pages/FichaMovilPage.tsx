@@ -16,7 +16,8 @@ import { formatearPatente } from "../domain/patente";
 import { textoRevisionGuardada } from "../domain/revision";
 import EstadoMovilBadge from "../components/EstadoMovilBadge";
 import PestanasFicha from "../components/PestanasFicha";
-import { PanelDatosGenerales, PanelInventario } from "../components/PanelesFicha";
+import { PanelDatosGenerales } from "../components/PanelesFicha";
+import PanelInventario from "../components/PanelInventario";
 import PanelRevisiones from "../components/PanelRevisiones";
 
 const ruta = getRouteApi("/app/moviles/$id");
@@ -29,6 +30,7 @@ const ICONO_AVISO = { operativo: CircleCheck, observaciones: CircleAlert, fuera_
  * US07: botón "Registrar revisión" (cualquier usuario, salvo móviles dados de baja), el historial
  * de revisiones con el detalle de la elegida y el aviso "Revisión guardada…" al volver del formulario.
  * US48: edición de datos generales (AUTOMOTORES) y baja definitiva (solo ADMIN).
+ * US17: inventario con el plano de buches (?buche= es el elegido) y el aviso al volver de generar o editar.
  * La pestaña y la revisión elegida van en la URL (?pestana=&revision=), así el Atrás y los links
  * compartidos abren la misma vista.
  * Un id inexistente (404) o inválido (400) muestra "Móvil no encontrado".
@@ -40,6 +42,7 @@ export default function FichaMovilPage() {
   const volverA = useLocation({ select: (l) => l.state.listaMoviles });
   const revisionGuardada = useLocation({ select: (l) => l.state.revisionGuardada });
   const movilEditado = useLocation({ select: (l) => l.state.movilEditado });
+  const buchesGuardados = useLocation({ select: (l) => l.state.buchesGuardados });
   const pestana: PestanaFicha = search.pestana ?? "datos";
 
   const { consulta, reintentar } = useConsulta(`movil:${id}`, () => obtenerMovil(id));
@@ -53,8 +56,9 @@ export default function FichaMovilPage() {
 
   const cambiarPestana = (p: PestanaFicha) =>
     void navigate({
-      search: (prev) => ({ ...prev, pestana: p === "datos" ? undefined : p, revision: undefined }),
+      search: (prev) => ({ ...prev, pestana: p === "datos" ? undefined : p, revision: undefined, buche: undefined }),
       replace: true,
+      resetScroll: false, // cambia solo la vista dentro de la ficha: no subir al tope
       state: (prev) => prev, // conserva la búsqueda de la lista para el "← Móviles"
     });
 
@@ -62,6 +66,15 @@ export default function FichaMovilPage() {
     void navigate({
       search: (prev) => ({ ...prev, pestana: "revision", revision }),
       replace: true,
+      resetScroll: false, // cambia solo la vista dentro de la ficha: no subir al tope
+      state: (prev) => prev,
+    });
+
+  const elegirBuche = (buche: string) =>
+    void navigate({
+      search: (prev) => ({ ...prev, pestana: "inventario", buche }),
+      replace: true,
+      resetScroll: false, // cambia solo la vista dentro de la ficha: no subir al tope
       state: (prev) => prev,
     });
 
@@ -178,6 +191,12 @@ export default function FichaMovilPage() {
         </Alert>
       )}
 
+      {buchesGuardados && (
+        <Alert tone="ok" icon={CircleCheck} role="status">
+          Cambios en los buches guardados.
+        </Alert>
+      )}
+
       {/* Como en Figma, las pestañas se ven aunque el móvil todavía esté cargando. */}
       <PestanasFicha activa={pestana} onCambiar={cambiarPestana} />
 
@@ -188,7 +207,7 @@ export default function FichaMovilPage() {
           ) : p === "datos" ? (
             <PanelDatosGenerales movil={movil} />
           ) : p === "inventario" ? (
-            <PanelInventario />
+            <PanelInventario movil={movil} seleccion={search.buche} onSeleccionar={elegirBuche} />
           ) : (
             <PanelRevisiones movilId={id} seleccion={search.revision} onSeleccionar={elegirRevision} />
           )}

@@ -16,7 +16,7 @@ import { leerSesion, tieneRol } from "@/features/auth/session";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { validarBusquedaSolicitudes } from "@/features/constancias/domain/busqueda";
 import { validarBusquedaFlota } from "@/features/moviles/domain/flota";
-import { validarBusquedaFicha, validarBusquedaMoviles, type BusquedaMoviles } from "@/features/moviles/domain/busquedaMoviles";
+import { validarBusquedaBuches, validarBusquedaFicha, validarBusquedaMoviles, type BusquedaMoviles } from "@/features/moviles/domain/busquedaMoviles";
 import SolicitudesPage from "@/features/constancias/pages/SolicitudesPage";
 import NuevaSolicitudPage from "@/features/constancias/pages/NuevaSolicitudPage";
 import SolicitudDetallePage from "@/features/constancias/pages/SolicitudDetallePage";
@@ -25,6 +25,8 @@ import GenerarConstanciaPage from "@/features/constancias/pages/GenerarConstanci
 import MovilesPage from "@/features/moviles/pages/MovilesPage";
 import AgregarMovilPage from "@/features/moviles/pages/AgregarMovilPage";
 import EditarMovilPage from "@/features/moviles/pages/EditarMovilPage";
+import GenerarBuchesPage from "@/features/moviles/pages/GenerarBuchesPage";
+import EditarBuchesPage from "@/features/moviles/pages/EditarBuchesPage";
 import FichaMovilPage from "@/features/moviles/pages/FichaMovilPage";
 import RegistrarRevisionPage from "@/features/moviles/pages/RegistrarRevisionPage";
 import type { ResultadoRevision } from "@/features/moviles/domain/revision";
@@ -206,6 +208,27 @@ const editarMovilRoute = createRoute({
   component: EditarMovilPage,
 });
 
+// US17: generar y editar buches. Solo AUTOMOTORES (ADMIN siempre); cambiar el estado de un buche
+// lo puede hacer cualquiera desde la ficha.
+const generarBuchesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/moviles/$id/buches/generar",
+  beforeLoad: ({ params }) => {
+    if (!tieneRol("AUTOMOTORES")) throw redirect({ to: "/moviles/$id", params, search: { pestana: "inventario" } });
+  },
+  component: GenerarBuchesPage,
+});
+
+const editarBuchesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/moviles/$id/buches",
+  validateSearch: validarBusquedaBuches,
+  beforeLoad: ({ params }) => {
+    if (!tieneRol("AUTOMOTORES")) throw redirect({ to: "/moviles/$id", params, search: { pestana: "inventario" } });
+  },
+  component: EditarBuchesPage,
+});
+
 // US07: revisión del móvil. Cualquier usuario con sesión la registra (lo valida el back).
 const revisionMovilRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -276,6 +299,8 @@ const routeTree = rootRoute.addChildren([
     fichaMovilRoute,
     editarMovilRoute,
     revisionMovilRoute,
+    generarBuchesRoute,
+    editarBuchesRoute,
     usuariosRoute,
     nuevoUsuarioRoute,
     detalleUsuarioRoute,
@@ -308,5 +333,6 @@ declare module "@tanstack/history" {
     listaMoviles?: BusquedaMoviles; // búsqueda de la lista, para volver desde la ficha (US06)
     revisionGuardada?: { codigo: string; resultado: ResultadoRevision }; // aviso al volver a la ficha (US07)
     usuarioCreado?: string; // correo del usuario recién creado
+    buchesGuardados?: boolean; // aviso al volver al inventario tras generar o editar buches (US17)
   }
-}
+}

@@ -83,25 +83,28 @@ centralBV/
 │  │  │  └─ pages/
 │  │  │     └─ DashboardPage.tsx    Dashboard de flota: contadores, filtros y tarjetas (US05)
 │  │  │
-│  │  ├─ moviles/               Móviles de emergencia (US04 alta, US05 dashboard, US06 ficha, US07 revisión)
+│  │  ├─ moviles/               Móviles de emergencia (US04 alta, US05 dashboard, US06 ficha, US07 revisión, US17 buches)
 │  │  │  ├─ api/
-│  │  │  │  └─ flotaApi.ts          Llamadas a /flota (móviles y catálogos) y traducción front ↔ back
+│  │  │  │  └─ flotaApi.ts          Llamadas a /flota (móviles, catálogos, revisiones y buches) y traducción front ↔ back
 │  │  │  ├─ domain/
 │  │  │  │  ├─ movil.ts             Tipos, estados, validación del alta y orden natural (M-2 antes que M-10)
 │  │  │  │  ├─ patente.ts           Normalización y formato de patentes ("AB 123 CD")
 │  │  │  │  ├─ denominacion.ts      Normalización del número interno ("m1" → "M-1")
 │  │  │  │  ├─ flota.ts             Filtros de la URL del dashboard y paginación en el front
-│  │  │  │  ├─ busquedaMoviles.ts   Parámetros de la URL de la lista (?q=) y de la ficha (?pestana=)
-│  │  │  │  └─ revision.ts          Verificaciones, resultado, validación y resumen del historial (US07)
+│  │  │  │  ├─ busquedaMoviles.ts   Parámetros de la URL de la lista (?q=), de la ficha (?pestana=) y de buches (?buche=)
+│  │  │  │  ├─ revision.ts          Verificaciones, resultado, validación y resumen del historial (US07)
+│  │  │  │  └─ buches.ts            Zonas, estados, plan del generador y validación de nombres de buches (US17)
 │  │  │  ├─ components/             MovilForm, SelectorCatalogo, diálogos de catálogo y de patente especial,
 │  │  │  │                          EstadoMovilBadge, TarjetaMovil, ContadorEstado, FiltroSelect,
 │  │  │  │                          BuscadorMoviles, PestanasFicha, PanelesFicha,
 │  │  │  │                          EstadoVerificacion, SeccionRevision, FilaVerificacion, BadgeVerificacion,
-│  │  │  │                          PanelRevisiones (historial de revisiones)
+│  │  │  │                          PanelRevisiones (historial de revisiones),
+│  │  │  │                          PanelInventario, PlanoMovil, EstadoBucheBadge, PantallaBuches (US17)
 │  │  │  ├─ hooks/
-│  │  │  │  └─ useCatalogos.ts      Tipos, marcas y modelos del formulario de alta
+│  │  │  │  ├─ useCatalogos.ts      Tipos, marcas y modelos del formulario de alta
+│  │  │  │  └─ useMovilConBuches.ts Móvil y buches para generar o editar buches (US17)
 │  │  │  └─ pages/                  MovilesPage (lista y búsqueda), AgregarMovilPage, FichaMovilPage,
-│  │  │                             RegistrarRevisionPage
+│  │  │                             RegistrarRevisionPage, GenerarBuchesPage, EditarBuchesPage
 │  │  │
 │  │  ├─ sistema/
 │  │  │  └─ pages/
@@ -219,8 +222,10 @@ pages / components  →  hooks  →  domain
 | `/solicitudes/$id/generar` | Requiere sesión activa | `GenerarConstanciaPage` (formulario o visor del PDF) |
 | `/moviles` | Requiere sesión activa | `MovilesPage` (`?q=&pagina=`) |
 | `/moviles/nuevo` | AUTOMOTORES (ADMIN siempre); si no, vuelve a `/moviles` | `AgregarMovilPage` |
-| `/moviles/$id` | Requiere sesión activa | `FichaMovilPage` (`?pestana=inventario\|revision&revision=<id>`) |
+| `/moviles/$id` | Requiere sesión activa | `FichaMovilPage` (`?pestana=inventario\|revision&revision=<id>&buche=<id>`) |
 | `/moviles/$id/revision` | Requiere sesión activa | `RegistrarRevisionPage` (US07) |
+| `/moviles/$id/buches/generar` | AUTOMOTORES (ADMIN siempre); si no, vuelve al inventario | `GenerarBuchesPage` (US17) |
+| `/moviles/$id/buches` | AUTOMOTORES (ADMIN siempre); si no, vuelve al inventario | `EditarBuchesPage` (US17, `?buche=<id>`) |
 | `/guia` | Pública (demo de diseño y prototipo) | `Guia` |
 
 Las rutas con sesión cuelgan de una ruta sin path (`id: "app"`) que tiene el guard y el `AppLayout`; por eso sus ids son `/app/...` (por ejemplo, `getRouteApi("/app/solicitudes")`).
@@ -291,7 +296,7 @@ src/features/
 ├─ auth/            Login y sesión (existe)
 ├─ dashboard/       Dashboard de flota (existe)
 ├─ constancias/     Solicitudes (existe); falta entrega y pago (M4 2/2)
-├─ moviles/         Alta, dashboard, lista, ficha y revisión (existe); faltan edición e inventario (US17)
+├─ moviles/         Alta, dashboard, lista, ficha, revisión y buches (existe); faltan los materiales de cada buche
 ├─ inspeccion/      Checklist, pausa/retoma y envío
 └─ usuarios/        Gestión de usuarios (existe); faltan roles y permisos
 ```

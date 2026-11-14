@@ -6,7 +6,7 @@ import { crearRouter } from "@/app/router";
 import { guardarToken } from "@/features/auth/session";
 import { ErrorApi } from "@/lib/http";
 import { tokenDePrueba } from "@/test/token";
-import { darDeBajaMovil, listarMoviles, listarRevisiones, obtenerMovil, obtenerRevision } from "../api/flotaApi";
+import { darDeBajaMovil, listarBuches, listarMoviles, listarRevisiones, obtenerMovil, obtenerRevision } from "../api/flotaApi";
 import type { RevisionMovil } from "../domain/revision";
 import type { MovilFlota } from "../domain/movil";
 
@@ -19,6 +19,7 @@ vi.mock("../api/flotaApi", async (importOriginal) => {
     listarRevisiones: vi.fn(),
     obtenerRevision: vi.fn(),
     darDeBajaMovil: vi.fn(),
+    listarBuches: vi.fn(),
   };
 });
 
@@ -48,6 +49,7 @@ beforeEach(() => {
   window.localStorage.clear();
   guardarToken(tokenDePrueba(["COMUN"]));
   vi.mocked(listarRevisiones).mockResolvedValue(pagina([]));
+  vi.mocked(listarBuches).mockResolvedValue([]);
   vi.mocked(obtenerRevision).mockReset();
 });
 
@@ -107,7 +109,7 @@ describe("FichaMovilPage (US06)", () => {
     await screen.findByRole("heading", { level: 1, name: "R-01" });
 
     await userEvent.click(screen.getByRole("tab", { name: "Inventario" }));
-    expect(screen.getByRole("heading", { name: "Este móvil todavía no tiene buches" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Este móvil todavía no tiene buches" })).toBeInTheDocument();
     expect(history.location.search).toContain("pestana=inventario");
 
     await userEvent.click(screen.getByRole("tab", { name: "Revisiones" }));

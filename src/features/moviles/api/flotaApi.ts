@@ -3,6 +3,7 @@ import { aErrorApi, http } from "@/lib/http";
 import type { EstadoVehiculo } from "@/types/dominio";
 import type { CodigoVerificacion, EstadoVerificacion, PaginaRevisiones, RevisionMovil, ValoresRevision } from "../domain/revision";
 import { REVISIONES_POR_PAGINA, VERIFICACIONES, resultadoRevision } from "../domain/revision";
+import type { Buche, CantidadesGeneracion, EstadoBuche, Zona } from "../domain/buches";
 import { ordenarPorDenominacion, type Catalogo, type EstadoMovil, type ItemCatalogo, type ModeloCatalogo, type MovilFlota, type ValoresMovil } from "../domain/movil";
 
 /* Llamadas a /flota de centralBV_back (US04, US05, US45, US46).
@@ -342,4 +343,97 @@ export async function obtenerRevision(id: string, revisionId: string): Promise<R
       http.get<RevisionApi>(`/flota/vehiculos/${encodeURIComponent(id)}/revisiones/${encodeURIComponent(revisionId)}`),
     ),
   );
+}
+
+/* ---------- Buches (US17) ---------- */
+
+type ZonaApi = "LADO_CONDUCTOR" | "LADO_ACOMPANANTE" | "TRASERO" | "TECHO" | "CABINA";
+type EstadoBucheApi = "OPERATIVO" | "OBSERVACIONES" | "DANADO" | "FUERA_DE_USO";
+
+const ZONA_DESDE_API: Record<ZonaApi, Zona> = {
+  LADO_CONDUCTOR: "lado_conductor",
+  LADO_ACOMPANANTE: "lado_acompanante",
+  TRASERO: "trasero",
+  TECHO: "techo",
+  CABINA: "cabina",
+};
+const ZONA_A_API = Object.fromEntries(Object.entries(ZONA_DESDE_API).map(([api, z]) => [z, api])) as Record<Zona, ZonaApi>;
+
+const ESTADO_BUCHE_DESDE_API: Record<EstadoBucheApi, EstadoBuche> = {
+  OPERATIVO: "operativo",
+  OBSERVACIONES: "observaciones",
+  DANADO: "danado",
+  FUERA_DE_USO: "fuera_de_uso",
+};
+const ESTADO_BUCHE_A_API = Object.fromEntries(
+  Object.entries(ESTADO_BUCHE_DESDE_API).map(([api, e]) => [e, api]),
+) as Record<EstadoBuche, EstadoBucheApi>;
+
+interface BucheApi {
+  id: string;
+  nombre: string;
+  zona: ZonaApi;
+  orden: number;
+  estado: EstadoBucheApi;
+}
+
+const bucheDesdeApi = (b: BucheApi): Buche => ({
+  id: b.id,
+  nombre: b.nombre,
+  zona: ZONA_DESDE_API[b.zona],
+  orden: b.orden,
+  estado: ESTADO_BUCHE_DESDE_API[b.estado],
+});
+
+const rutaBuches = (id: string) => `/flota/vehiculos/${encodeURIComponent(id)}/compartimentos`;
+const rutaBuche = (id: string, bucheId: string) => `${rutaBuches(id)}/${encodeURIComponent(bucheId)}`;
+
+/** Buches del móvil ordenados por zona y número (lo ordena el back). */
+export async function listarBuches(id: string): Promise<Buche[]> {
+  return (await datosDe(http.get<BucheApi[]>(rutaBuches(id)))).map(bucheDesdeApi);
+}
+
+/** Crea los buches del generador. 409 COMPARTIMENTOS_YA_GENERADOS si el móvil ya tiene. */
+export async function generarBuches(id: string, c: CantidadesGeneracion): Promise<Buche[]> {
+  const cuerpo = {
+    ladoConductor: c.ladoConductor,
+    ladoAcompanante: c.ladoAcompanante,
+    trasero: c.trasero,
+    techo: c.techo,
+    cabina: c.cabina,
+  };
+  return (await datosDe(http.post<BucheApi[]>(`${rutaBuches(id)}/generar`, cuerpo))).map(bucheDesdeApi);
+}
+
+export interface ValoresBuche {
+  nombre: string;
+  zona: Zona;
+}
+
+/** Agrega un buche al final de su zona. 409 en `nombre` si ya existe. */
+export async function crearBuche(id: string, v: ValoresBuche): Promise<Buche> {
+  return bucheDesdeApi(
+    await datosDe(http.post<BucheApi>(rutaBuches(id), { nombre: v.nombre.trim(), zona: ZONA_A_API[v.zona] })),
+  );
+}
+
+/** Renombra o mueve de zona un buche (si cambia de zona, queda último en la nueva). */
+export async function editarBuche(id: string, bucheId: string, v: Partial<ValoresBuche>): Promise<Buche> {
+  const cuerpo = {
+    ...(v.nombre !== undefined && { nombre: v.nombre.trim() }),
+    ...(v.zona && { zona: ZONA_A_API[v.zona] }),
+  };
+  return bucheDesdeApi(await datosDe(http.patch<BucheApi>(rutaBuche(id, bucheId), cuerpo)));
+}
+
+/** Cambia el estado de un buche. Cualquier usuario puede hacerlo; no cambia el estado del móvil. */
+export async function cambiarEstadoBuche(id: string, bucheId: string, estado: EstadoBuche): Promise<Buche> {
+  return bucheDesdeApi(
+    await datosDe(http.patch<BucheApi>(`${rutaBuche(id, bucheId)}/estado`, { estado: ESTADO_BUCHE_A_API[estado] })),
+  );
+}
+
+/** Elimina un buche. 409 COMPARTIMENTO_CON_MATERIALES si tiene materiales asignados. */
+export async function eliminarBuche(id: string, bucheId: string): Promise<void> {
+  await datosDe(http.delete(rutaBuche(id, bucheId)));
 }

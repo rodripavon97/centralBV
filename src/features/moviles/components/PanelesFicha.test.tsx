@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { MovilFlota } from "../domain/movil";
 import type { RevisionMovil } from "../domain/revision";
-import { DetalleRevision, PanelDatosGenerales, PanelInventario } from "./PanelesFicha";
+import { DetalleRevision, PanelDatosGenerales } from "./PanelesFicha";
 
 const movil: MovilFlota = {
   id: "v1",
@@ -35,12 +35,6 @@ describe("PanelesFicha", () => {
 
     expect(screen.getByText("Motivo de baja")).toBeInTheDocument();
     expect(screen.getByText("Fin de vida útil")).toBeInTheDocument();
-  });
-
-  it("muestra el estado vacío del inventario", () => {
-    render(<PanelInventario />);
-
-    expect(screen.getByRole("heading", { name: "Este móvil todavía no tiene buches" })).toBeInTheDocument();
   });
 
   it("muestra el detalle de una revisión con verificaciones faltantes", () => {

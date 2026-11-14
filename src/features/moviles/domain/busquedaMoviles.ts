@@ -40,13 +40,17 @@ export const idPanel = (p: PestanaFicha) => `ficha-panel-${p}`;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * /moviles/$id?pestana=&revision=  ·  sin pestana (o con una desconocida) se ve "Datos generales".
+ * /moviles/$id?pestana=&revision=&buche=  ·  sin pestana (o con una desconocida) se ve "Datos generales".
  * `revision` es la revisión elegida en el historial (US07); sin ella se ve la más nueva.
+ * `buche` es el buche elegido en el plano del inventario (US17); sin él se ve el primero.
  */
 export interface BusquedaFicha {
   pestana?: PestanaFicha;
   revision?: string;
+  buche?: string;
 }
+
+const uuidO = (v: unknown) => (typeof v === "string" && UUID.test(v) ? v : undefined);
 
 export function validarBusquedaFicha(search: Record<string, unknown>): BusquedaFicha {
   const pestana = search.pestana;
@@ -56,6 +60,16 @@ export function validarBusquedaFicha(search: Record<string, unknown>): BusquedaF
       typeof pestana === "string" && pestana !== "datos" && (PESTANAS_FICHA as readonly string[]).includes(pestana)
         ? (pestana as PestanaFicha)
         : undefined,
-    revision: pestana === "revision" && typeof search.revision === "string" && UUID.test(search.revision) ? search.revision : undefined,
+    revision: pestana === "revision" ? uuidO(search.revision) : undefined,
+    buche: pestana === "inventario" ? uuidO(search.buche) : undefined,
   };
+}
+
+/** /moviles/$id/buches?buche=  ·  el buche que se está editando (US17). */
+export interface BusquedaBuches {
+  buche?: string;
+}
+
+export function validarBusquedaBuches(search: Record<string, unknown>): BusquedaBuches {
+  return { buche: uuidO(search.buche) };
 }
