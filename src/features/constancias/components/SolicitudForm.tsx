@@ -1,9 +1,12 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { CircleX } from "lucide-react";
 import { Button } from "@/components/centralbv/Button";
 import { Field, Input, Select, Textarea } from "@/components/centralbv/Field";
+import { DatePicker } from "@/components/centralbv/DatePicker";
+import { TimePicker } from "@/components/centralbv/TimePicker";
 import { fieldProps } from "@/components/centralbv/estilos";
 import { Alert } from "@/components/centralbv/Alert";
+import { hoy, horaActual, parsearFecha } from "@/lib/fecha";
 import { DESTINOS_CONSTANCIA, TIPOS_SINIESTRO } from "../domain/formato";
 import {
   CAMPOS,
@@ -40,8 +43,26 @@ export default function SolicitudForm({
   const errores = intentado ? validarSolicitud(valores) : {};
   const cantidadErrores = Object.keys(errores).length;
 
-  const set = (campo: CampoSolicitud) => (e: { target: { value: string } }) =>
-    setValores((v) => ({ ...v, [campo]: e.target.value }));
+  // Si el siniestro fue hoy, la hora no puede pasarse de la actual:
+  // el datepicker cierra en hoy y el timepicker en este límite.
+  const esHoy = parsearFecha(valores.fecha) === hoy();
+  const horaMaxima = esHoy ? horaActual() : undefined;
+
+  const filtrarLetrasKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && /\p{L}/u.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const set = (campo: CampoSolicitud) => (e: { target: { value: string } }) => {
+    let valor = e.target.value;
+    if (campo === "dni") {
+      valor = valor.replace(/[^\d.]/g, "");
+    } else if (campo === "telefono") {
+      valor = valor.replace(/[^\d\s()+-]/g, "");
+    }
+    setValores((v) => ({ ...v, [campo]: valor }));
+  };
 
   const control = (campo: CampoSolicitud, required = true) => ({
     ...fieldProps(campo, errores[campo], required),
@@ -75,10 +96,23 @@ export default function SolicitudForm({
           <Input autoComplete="off" {...control("nombre")} />
         </Field>
         <Field id="dni" label="DNI" required error={errores.dni}>
-          <Input inputMode="numeric" autoComplete="off" className="font-mono" {...control("dni")} />
+          <Input
+            inputMode="numeric"
+            autoComplete="off"
+            className="font-mono"
+            {...control("dni")}
+            onKeyDown={filtrarLetrasKeyDown}
+          />
         </Field>
         <Field id="telefono" label="Teléfono" error={errores.telefono}>
-          <Input type="tel" inputMode="tel" autoComplete="off" className="font-mono" {...control("telefono", false)} />
+          <Input
+            type="tel"
+            inputMode="tel"
+            autoComplete="off"
+            className="font-mono"
+            {...control("telefono", false)}
+            onKeyDown={filtrarLetrasKeyDown}
+          />
         </Field>
       </Seccion>
 
@@ -96,10 +130,19 @@ export default function SolicitudForm({
           </Select>
         </Field>
         <Field id="fecha" label="Fecha" required error={errores.fecha}>
-          <Input placeholder="dd/mm/aaaa" autoComplete="off" className="font-mono" {...control("fecha")} />
+          <DatePicker
+            {...fieldProps("fecha", errores.fecha, true)}
+            value={valores.fecha}
+            onChange={(fecha) => setValores((v) => ({ ...v, fecha }))}
+          />
         </Field>
         <Field id="hora" label="Hora" required error={errores.hora}>
-          <Input placeholder="hh:mm" autoComplete="off" className="font-mono" {...control("hora")} />
+          <TimePicker
+            {...fieldProps("hora", errores.hora, true)}
+            value={valores.hora}
+            max={horaMaxima}
+            onChange={(hora) => setValores((v) => ({ ...v, hora }))}
+          />
         </Field>
         <Field id="direccion" label="Domicilio del hecho" required error={errores.direccion} className="md:col-span-2">
           <Input autoComplete="off" {...control("direccion")} />

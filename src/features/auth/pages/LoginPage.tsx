@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { Alert } from "@/components/centralbv/Alert";
 import { esErrorDeCredenciales, iniciarSesion } from "@/features/auth/api/authApi";
@@ -17,16 +17,20 @@ import {
   borrarEmailRecuperacion,
   guardarEmailRecuperacion,
 } from "@/features/auth/recuperacion";
+import { rutaInternaSegura } from "@/features/auth/domain/volverA";
 import { guardarToken } from "@/features/auth/session";
 
 const credencialesIniciales: Credenciales = { email: "", password: "" };
 
 interface LoginPageProps {
   sesionVencida?: boolean;
+  /** Ruta interna pedida antes del login (deep link / QR). */
+  volverA?: string;
 }
 
-export function LoginPage({ sesionVencida = false }: LoginPageProps = {}) {
+export function LoginPage({ sesionVencida = false, volverA }: LoginPageProps = {}) {
   const navigate = useNavigate();
+  const router = useRouter();
   const [credenciales, setCredenciales] = useState<Credenciales>(credencialesIniciales);
   const [errores, setErrores] = useState<ErroresCredenciales>({});
   const [errorCredenciales, setErrorCredenciales] = useState<string | null>(null);
@@ -56,7 +60,10 @@ export function LoginPage({ sesionVencida = false }: LoginPageProps = {}) {
     try {
       const { token } = await iniciarSesion(normalizarCredenciales(credenciales));
       guardarToken(token);
-      await navigate({ to: "/dashboard" });
+      const destino = rutaInternaSegura(volverA);
+      // Path interno libre (p.ej. deep link del QR): el route tree tipado no lo expresa.
+      if (destino) router.history.push(destino);
+      else await navigate({ to: "/dashboard" });
     } catch (error) {
       if (esErrorDeCredenciales(error)) {
         setErrorCredenciales("Usuario o contraseña incorrectos");

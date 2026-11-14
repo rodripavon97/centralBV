@@ -6,14 +6,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { crearRouter } from "@/app/router";
 import { iniciarSesion } from "@/features/auth/api/authApi";
 import { guardarToken, obtenerToken } from "@/features/auth/session";
+import { obtenerMovil } from "@/features/moviles/api/flotaApi";
 
 vi.mock("@/features/auth/api/authApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/auth/api/authApi")>();
   return { ...actual, iniciarSesion: vi.fn() };
 });
 
-const iniciarSesionMock = vi.mocked(iniciarSesion);
+vi.mock("@/features/moviles/api/flotaApi", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/features/moviles/api/flotaApi")>();
+  return { ...actual, obtenerMovil: vi.fn() };
+});
 
+const iniciarSesionMock = vi.mocked(iniciarSesion);
 function crearToken(expEnSegundos: number): string {
   const payload = btoa(JSON.stringify({ exp: expEnSegundos }));
   return `header.${payload}.firma`;
@@ -88,6 +93,33 @@ describe("LoginPage", () => {
       email: "irios@bomberos.org",
       password: "clave-segura",
     });
+  });
+
+  it("tras el login vuelve a la ruta pedida (deep link / QR)", async () => {
+    const token = tokenVigente();
+    iniciarSesionMock.mockResolvedValue({ token });
+    vi.mocked(obtenerMovil).mockResolvedValue({
+      id: "m1",
+      codigo: "M-1",
+      patente: "AB123CD",
+      tipo: "Ambulancia",
+      marca: "Ford",
+      modelo: "Transit",
+      tipoId: "t1",
+      marcaId: "ma1",
+      modeloId: "mo1",
+      estado: "operativo",
+    });
+
+    const router = await renderApp("/moviles/m1/revision");
+    expect(router.state.location.state.volverA).toBe("/moviles/m1/revision");
+
+    const user = await completarCredenciales();
+    await user.click(screen.getByRole("button", { name: "Ingresar" }));
+
+    expect(await screen.findByRole("heading", { name: "Revisión del móvil" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/moviles/m1/revision");
+    expect(obtenerToken()).toBe(token);
   });
 
   it("muestra y oculta la contraseña", async () => {

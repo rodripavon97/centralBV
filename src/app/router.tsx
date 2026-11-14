@@ -335,4 +335,4 @@ declare module "@tanstack/history" {
     usuarioCreado?: string; // correo del usuario recién creado
     buchesGuardados?: boolean; // aviso al volver al inventario tras generar o editar buches (US17)
   }
-}
+}
