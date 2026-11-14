@@ -4,6 +4,7 @@ import { Alert } from "@/components/centralbv/Alert";
 import { Button } from "@/components/centralbv/Button";
 import { Field, Input, Select } from "@/components/centralbv/Field";
 import { fieldProps } from "@/components/centralbv/estilos";
+import { esModoDemo, MENSAJE_SIN_MAILS } from "@/demo/modoDemo";
 import { ErrorApi } from "@/lib/http";
 import { ROLES_USUARIO } from "../domain/usuario";
 import {
@@ -132,7 +133,7 @@ export default function UsuarioForm({
             {esAlta ? (
               <p className="flex max-w-sm items-start gap-2 text-sm text-text-muted">
                 <Mail size={16} strokeWidth={1.5} aria-hidden className="mt-0.5 shrink-0" />
-                Al guardar, enviamos un correo de bienvenida a esta dirección.
+                {esModoDemo() ? MENSAJE_SIN_MAILS : "Al guardar, enviamos un correo de bienvenida a esta dirección."}
               </p>
             ) : <span />}
             <div className="flex justify-end gap-3">

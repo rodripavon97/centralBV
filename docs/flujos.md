@@ -199,3 +199,18 @@ Reglas:
 ## 7. Estados que tiene que tener toda pantalla
 
 Normal, cargando, vacío y error. En la lista de vehículos, además, "sin resultados de búsqueda".
+
+## 8. Modo demo (US58)
+
+Para la presentación: se proyecta un QR a `https://centralbv.com.ar/demo` y la gente prueba la app desde el celular, sin login y sin tocar la base real.
+
+1. **Entrar:** `/demo` guarda el flag `centralbv.demo = "1"`, crea la sesión del "Usuario demo" (ADMIN, ADMINISTRATIVO, AUTOMOTORES y COMUN, vence a los 30 días), carga los datos de ejemplo si no hay y lleva al dashboard.
+2. **Usar:** con el flag, ningún pedido sale a la red. El adapter de `http` los resuelve con el back simulado (`src/demo/backSimulado.ts`), que tiene las mismas reglas que el back (por ejemplo, los buches de la US17: se generan una sola vez, nombre único → 409 en `nombre`, el cambio de zona deja el buche último, un móvil dado de baja → 409).
+3. **Guardar:** después de cada cambio el estado se guarda en `localStorage["centralbv.demo.datos"]`; al recargar sigue ahí. Si lo guardado no se puede leer (JSON roto u otra versión), se cargan los datos de ejemplo.
+4. **Aviso:** arriba del contenido, fijo en celular y escritorio: "Modo demo · los cambios solo se guardan en este navegador", con **Reiniciar datos** (vuelve a los de ejemplo y recarga) y **Salir** (borra flag, sesión y datos, y va al login). "Cerrar sesión" en la demo también sale del modo demo.
+5. **Mails:** crear un usuario y reenviar la bienvenida responden OK con el aviso "En modo demo no se envían mails."
+6. **Constancia:** la hoja (vista previa e impresión) y el PDF usan `datosInstitucion()` de `src/features/constancias/institucion.ts`. En la demo, el encabezado dice "Cuartel de Bomberos Voluntarios (demo)", no lleva escudo, la dirección, el teléfono y la localidad de emisión son genéricos y la hoja lleva la marca de agua "DEMO · sin validez". Como en producción el PDF lo arma el back (jsPDF), en la demo lo arma el front con jsPDF y el mismo layout (`src/features/constancias/pdf/pdfConstancia.ts`).
+
+Fuera de `/demo` (sin el flag) la app funciona igual que antes: login y back real.
+
+Los datos de ejemplo son inventados (7 móviles en todos los estados, con buches y revisiones; solicitudes en cada estado; 4 usuarios con roles distintos). M-5 y M-6 no tienen buches, para probar "Generar buches".

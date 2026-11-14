@@ -1,10 +1,11 @@
-import logo from "@/assets/logo-bomberos-jcp.jpeg";
 import type { ReactNode } from "react";
 import type { Solicitud } from "@/types/dominio";
 import { fechaEmision, formatearDni, formatearFecha, formatearHora } from "../domain/formato";
+import { datosInstitucion } from "../institucion";
 
 /** Una hoja A4 (210 × 297 mm) con el formato oficial de la constancia.
-    Reproduce el PDF que arma el back para que la vista previa sea fiel. */
+    Reproduce el PDF que arma el back para que la vista previa sea fiel.
+    Los datos del cuartel salen de `datosInstitucion()`: en modo demo son genéricos (US58). */
 export default function HojaConstancia({
   solicitud,
   observaciones,
@@ -15,24 +16,34 @@ export default function HojaConstancia({
   conFirmas?: boolean;
 }) {
   const { damnificado: d, siniestro: s, constancia: c } = solicitud;
+  const institucion = datosInstitucion();
 
   return (
     <article className="hoja-a4 relative overflow-hidden bg-white text-black">
+      {institucion.marcaAgua && (
+        <p
+          data-testid="marca-agua"
+          className="pointer-events-none absolute inset-0 flex select-none items-center justify-center whitespace-nowrap text-[44pt] font-bold uppercase text-black/10 [transform:rotate(-35deg)]"
+        >
+          {institucion.marcaAgua}
+        </p>
+      )}
+
       <div className="absolute inset-x-[20mm] top-[10mm] flex flex-col items-center text-center">
-        <img src={logo} alt="" className="size-[30mm] object-contain" />
-        <p className="mt-[2mm] text-[12pt] font-bold leading-tight tracking-[0.01em]">
-          ASOCIACIÓN DE BOMBEROS VOLUNTARIOS DE JOSÉ C. PAZ
-        </p>
-        <p className="mt-[1mm] text-[9pt] leading-[1.2]">PERSONERÍA JURÍDICA N° 32092</p>
-        <p className="text-[9pt] leading-[1.2]">PROVINCIA DE BUENOS AIRES - REPÚBLICA ARGENTINA</p>
-        <p className="text-[9pt] leading-[1.2]">I.N.O.B.V. N° 234</p>
-        <p className="mt-[3mm] text-[8pt] italic leading-[1.2]">
-          Cuartel Central - Comandante Donato De Salvis
-        </p>
-        <p className="text-[8pt] leading-[1.2]">Pasaje San Agustín 703 (1665) José Clemente Paz - Bs. As.</p>
-        <p className="text-[8pt] leading-[1.2]">
-          Tel.: 02320-422222 / 02320-436736 E-mail: adbvjosecpaz@gmail.com
-        </p>
+        {institucion.logo ? (
+          <img src={institucion.logo} alt="" className="size-[30mm] object-contain" />
+        ) : (
+          <div className="size-[30mm]" aria-hidden />
+        )}
+        <p className="mt-[2mm] text-[12pt] font-bold leading-tight tracking-[0.01em]">{institucion.nombre}</p>
+        {institucion.registros.map((linea, i) => (
+          <p key={linea} className={`${i === 0 ? "mt-[1mm] " : ""}text-[9pt] leading-[1.2]`}>
+            {linea}
+          </p>
+        ))}
+        <p className="mt-[3mm] text-[8pt] italic leading-[1.2]">{institucion.sede}</p>
+        <p className="text-[8pt] leading-[1.2]">{institucion.direccion}</p>
+        <p className="text-[8pt] leading-[1.2]">{institucion.contacto}</p>
       </div>
 
       <div className="absolute inset-x-[20mm] top-[84mm] text-center">
@@ -103,7 +114,7 @@ export default function HojaConstancia({
           teniendo validez únicamente, con titulo de propiedad o boleto de compra-venta, para el caso de siniestro sobre
           bienes muebles y/o inmuebles registrables.
         </p>
-        <p className="mt-[1mm] font-bold">{fechaEmision()}</p>
+        <p className="mt-[1mm] font-bold">{fechaEmision(new Date(), institucion.localidadEmision)}</p>
       </div>
 
       {conFirmas && (

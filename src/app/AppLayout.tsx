@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { FileText, LayoutGrid, LogOut, Menu, Truck, Users, X, type LucideIcon } from "lucide-react";
 import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { focus } from "@/components/centralbv/estilos";
+import AvisoModoDemo from "@/demo/AvisoModoDemo";
+import { esModoDemo, salirModoDemo } from "@/demo/modoDemo";
 import { borrarToken, leerSesion } from "@/features/auth/session";
 
 /* Navegación principal. Desde tablet (md) es el riel lateral de íconos; en mobile se
@@ -36,8 +38,11 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
   // back sigue siendo el que valida el permiso.
   const esAdmin = roles.length === 0 || roles.includes("ADMIN");
   const visibles = destinos.filter((destino) => !destino.soloAdmin || esAdmin);
+  const demo = esModoDemo();
   const salir = async () => {
     setMenuAbierto(false);
+    // En la demo, cerrar sesión también sale del modo demo (si no, el login quedaría contra el back simulado).
+    if (demo) salirModoDemo();
     borrarToken();
     await navigate({ to: "/login" });
   };
@@ -106,7 +111,10 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
         </button>
       </nav>
 
-      <main className="flex min-w-0 flex-1 flex-col px-(--layout-margin) py-6 md:py-8">{children ?? <Outlet />}</main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        {demo && <AvisoModoDemo />}
+        <main className="flex min-w-0 flex-1 flex-col px-(--layout-margin) py-6 md:py-8">{children ?? <Outlet />}</main>
+      </div>
     </div>
   );
 }

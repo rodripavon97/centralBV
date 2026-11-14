@@ -4,6 +4,7 @@ import { Lock, Plus, Users } from "lucide-react";
 import { Alert } from "@/components/centralbv/Alert";
 import { ButtonLink } from "@/components/centralbv/Button";
 import { EmptyState } from "@/components/centralbv/EmptyState";
+import { esModoDemo, MENSAJE_SIN_MAILS } from "@/demo/modoDemo";
 import { ErrorApi } from "@/lib/http";
 import { reenviarBienvenida } from "../api/usuariosApi";
 import EstadoErrorUsuarios from "../components/EstadoErrorUsuarios";
@@ -44,7 +45,9 @@ export default function UsuariosPage() {
     (creado && !creadoOculto
       ? {
           tono: "ok",
-          contenido: (
+          contenido: esModoDemo() ? (
+            <>Usuario creado. {MENSAJE_SIN_MAILS}</>
+          ) : (
             <>
               Usuario creado. Enviamos el correo de bienvenida a{" "}
               <span className="text-code break-all">{creado}</span>
@@ -77,7 +80,9 @@ export default function UsuariosPage() {
       await reenviarBienvenida(usuario.id);
       setAviso({
         tono: "ok",
-        contenido: (
+        contenido: esModoDemo() ? (
+          MENSAJE_SIN_MAILS
+        ) : (
           <>
             Correo de bienvenida reenviado a <span className="text-code break-all">{usuario.email}</span>
           </>
