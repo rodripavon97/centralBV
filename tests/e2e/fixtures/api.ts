@@ -33,6 +33,15 @@ interface MovilApi {
   motivoBaja?: string | null;
 }
 
+/** Buche (compartimento) de un móvil, como lo devuelve el back de US17. */
+export interface CompartimentoApi {
+  id: string;
+  nombre: string;
+  zona: "LADO_CONDUCTOR" | "LADO_ACOMPANANTE" | "TRASERO" | "TECHO" | "CABINA";
+  orden: number;
+  estado: "OPERATIVO" | "OBSERVACIONES" | "DANADO" | "FUERA_DE_USO";
+}
+
 interface RevisionApi {
   id: string;
   vehiculoId: string;
@@ -99,6 +108,8 @@ export interface EstadoBackend {
   marcas: ItemCatalogo[];
   modelos: ModeloApi[];
   revisiones: Record<string, RevisionApi[]>;
+  compartimentos: Record<string, CompartimentoApi[]>;
+  siguienteCompartimento: number;
   solicitudes: SolicitudApi[];
   usuarios: UsuarioApi[];
   rolesDeLogin: string[];
@@ -217,6 +228,8 @@ export function estadoInicial(): EstadoBackend {
     revisiones: {
       "movil-1": [revision(REVISION_M1, "movil-1", "2026-10-20T18:30:00.000Z", true)],
     },
+    compartimentos: {},
+    siguienteCompartimento: 1,
     solicitudes: [
       solicitud("sol-1", "SOL-0001", "PENDIENTE", "Roberto Acosta"),
       solicitud("sol-2", "SOL-0002", "REALIZADA", "Marta Gómez", {
@@ -501,6 +514,74 @@ function manejar(backend: Backend, route: Route): Promise<unknown> {
       const atenciones = claves.filter((clave) => nueva[clave].estado === "ADVERTENCIA");
       movil.estado = criticos.length ? "FUERA_SERVICIO" : atenciones.length ? "OBSERVACIONES" : "OPERATIVO";
       return json(route, 201, nueva);
+    }
+  }
+
+  /* ---------- Buches (US17) ---------- */
+  const compartimentos = path.match(/^\/flota\/vehiculos\/([^/]+)\/compartimentos(?:\/(generar|[^/]+))?(\/estado)?$/);
+  if (compartimentos) {
+    const movil = estado.moviles.find((m) => m.id === compartimentos[1]);
+    if (!movil) return error(route, 404, "Móvil no encontrado");
+    const lista = (estado.compartimentos[movil.id] ??= []);
+    const zonas: CompartimentoApi["zona"][] = ["LADO_CONDUCTOR", "LADO_ACOMPANANTE", "TRASERO", "TECHO", "CABINA"];
+    const ordenados = () => [...lista].sort((a, b) => zonas.indexOf(a.zona) - zonas.indexOf(b.zona) || a.orden - b.orden);
+    // Ids con forma de UUID: el front solo acepta un buche elegido en la URL si lo es.
+    const nuevoId = () => `00000000-0000-4000-8000-${String(estado.siguienteCompartimento++).padStart(12, "0")}`;
+    const ultimoOrden = (zona: CompartimentoApi["zona"]) => Math.max(0, ...lista.filter((c) => c.zona === zona).map((c) => c.orden));
+    const repetido = (nombre: string, salvo?: string) =>
+      lista.some((c) => c.id !== salvo && c.nombre.toLowerCase() === nombre.toLowerCase());
+    const [, , accion, cambioEstado] = compartimentos;
+
+    if (metodo === "GET" && !accion) return json(route, 200, ordenados());
+    if (movil.estado === "BAJA_DEFINITIVA") return error(route, 409, "El vehículo ya está dado de baja definitiva");
+
+    if (metodo === "POST" && accion === "generar") {
+      if (lista.length) return error(route, 409, "El móvil ya tiene buches", { code: "COMPARTIMENTOS_YA_GENERADOS" });
+      const c = peticion.postDataJSON() as Record<string, number | boolean>;
+      const plan: [string, CompartimentoApi["zona"], number][] = [
+        ["LC", "LADO_CONDUCTOR", Number(c.ladoConductor)],
+        ["LA", "LADO_ACOMPANANTE", Number(c.ladoAcompanante)],
+        ["TR", "TRASERO", Number(c.trasero)],
+        ["TE", "TECHO", c.techo ? 1 : 0],
+        ["CB", "CABINA", c.cabina ? 1 : 0],
+      ];
+      for (const [prefijo, zona, cantidad] of plan) {
+        for (let i = 1; i <= cantidad; i++) lista.push({ id: nuevoId(), nombre: `${prefijo}-${i}`, zona, orden: i, estado: "OPERATIVO" });
+      }
+      if (!lista.length) return error(route, 400, "Elegí al menos un buche para generar");
+      return json(route, 201, ordenados());
+    }
+    if (metodo === "POST" && !accion) {
+      const cuerpo = peticion.postDataJSON() as { nombre: string; zona: CompartimentoApi["zona"] };
+      const nombre = cuerpo.nombre.trim().toUpperCase();
+      if (repetido(nombre)) return error(route, 409, "Ya existe un buche con ese nombre", { campo: "nombre", code: "COMPARTIMENTO_DUPLICADO" });
+      const nuevo: CompartimentoApi = { id: nuevoId(), nombre, zona: cuerpo.zona, orden: ultimoOrden(cuerpo.zona) + 1, estado: "OPERATIVO" };
+      lista.push(nuevo);
+      return json(route, 201, nuevo);
+    }
+
+    const buche = lista.find((c) => c.id === accion);
+    if (!buche) return error(route, 404, "El buche no existe");
+    if (metodo === "PATCH" && cambioEstado) {
+      buche.estado = (peticion.postDataJSON() as { estado: CompartimentoApi["estado"] }).estado;
+      return json(route, 200, buche);
+    }
+    if (metodo === "PATCH") {
+      const cuerpo = peticion.postDataJSON() as { nombre?: string; zona?: CompartimentoApi["zona"] };
+      if (cuerpo.nombre !== undefined) {
+        const nombre = cuerpo.nombre.trim().toUpperCase();
+        if (repetido(nombre, buche.id)) return error(route, 409, "Ya existe un buche con ese nombre", { campo: "nombre", code: "COMPARTIMENTO_DUPLICADO" });
+        buche.nombre = nombre;
+      }
+      if (cuerpo.zona && cuerpo.zona !== buche.zona) {
+        buche.orden = ultimoOrden(cuerpo.zona) + 1;
+        buche.zona = cuerpo.zona;
+      }
+      return json(route, 200, buche);
+    }
+    if (metodo === "DELETE") {
+      estado.compartimentos[movil.id] = lista.filter((c) => c !== buche);
+      return route.fulfill({ status: 204, headers: { "access-control-allow-origin": "*" } });
     }
   }
 

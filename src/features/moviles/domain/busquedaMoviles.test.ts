@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validarBusquedaFicha, validarBusquedaMoviles } from "./busquedaMoviles";
+import { validarBusquedaBuches, validarBusquedaFicha, validarBusquedaMoviles } from "./busquedaMoviles";
 
 describe("validarBusquedaMoviles", () => {
   it("recorta la búsqueda y acepta páginas mayores a 1", () => {
@@ -31,5 +31,19 @@ describe("validarBusquedaFicha", () => {
     expect(validarBusquedaFicha({ pestana: "revision", revision: R })).toEqual({ pestana: "revision", revision: R });
     expect(validarBusquedaFicha({ pestana: "revision", revision: "abc" }).revision).toBeUndefined();
     expect(validarBusquedaFicha({ pestana: "inventario", revision: R }).revision).toBeUndefined();
+  });
+
+  it("el buche elegido solo vale en la pestaña Inventario y con un id válido", () => {
+    expect(validarBusquedaFicha({ pestana: "inventario", buche: R }).buche).toBe(R);
+    expect(validarBusquedaFicha({ pestana: "inventario", buche: "LC-1" }).buche).toBeUndefined();
+    expect(validarBusquedaFicha({ pestana: "revision", buche: R }).buche).toBeUndefined();
+  });
+});
+
+describe("validarBusquedaBuches", () => {
+  it("acepta solo un id válido", () => {
+    const R = "66666666-6666-4666-8666-666666666666";
+    expect(validarBusquedaBuches({ buche: R })).toEqual({ buche: R });
+    expect(validarBusquedaBuches({ buche: 3 })).toEqual({ buche: undefined });
   });
 });

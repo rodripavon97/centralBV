@@ -106,6 +106,12 @@ Hecho:
   - VTV, seguro, service, kilometraje y combustible quedaron fuera del MVP.
 - **Historial de revisiones (US07 · T48):** la pestaña Revisiones de la ficha lista las revisiones del móvil, de la más nueva a la más vieja (fecha, resultado, qué no estuvo en Ok y quién la hizo), de a 10 con "Ver más". Al elegir una se ve su detalle; sin elegir, la más nueva. La elegida va en la URL (`?pestana=revision&revision=<id>`), así un link abre esa revisión. En desktop, lista y detalle van lado a lado; en mobile, uno abajo del otro.
   - Marcar el estado de los materiales es otra US (Release 2).
+- **Buches (US17, sin materiales):** la pestaña Inventario muestra el plano del móvil visto desde arriba: cabina adelante, lado conductor a la izquierda, techo y escalas al centro, lado acompañante a la derecha y trasero atrás. Al tocar un buche se ve su detalle; el elegido va en la URL (`?pestana=inventario&buche=<id>`).
+  - Todavía no hay materiales: el detalle muestra el aviso "Estamos trabajando en esto" y abajo los botones de los 4 estados de Figma: Operativo / Con observaciones / Dañado / Fuera de uso. Cualquier usuario cambia el estado de un buche, y eso no cambia el estado del móvil (decidido el 13/11). El plano lo marca con glifo y borde: fino sólido, punteado amarillo, grueso rojo con fondo rojo o punteado azul; la leyenda muestra los 4.
+  - Sin el rol de automotores, "Generar / editar buches" y "Editar buche" se ven deshabilitados y aparece el aviso del candado.
+  - Generar buches (`/moviles/$id/buches/generar`, solo AUTOMOTORES): contadores por lado (hasta 10) y trasero (hasta 3), interruptores de techo y cabina, al menos un buche, y vista previa del plano. Nombres automáticos LC-1…, LA-1…, TR-1…, TE-1, CB-1; todos arrancan Operativos. Se usa una vez: si el móvil ya tiene buches, manda a editarlos.
+  - Editar buches (`/moviles/$id/buches`, solo AUTOMOTORES): se llega con "Generar / editar buches" (sin buche elegido) o con "Editar buche" (`?buche=<id>`). El panel del buche tiene Nombre (hasta 20 caracteres, sin repetir en el móvil), Zona (al cambiarla queda último en la nueva), el aviso de materiales y Eliminar buche (con confirmación) / Cancelar / Guardar cambios. "Agregar buche" cambia el título a "Agregar buche" y abre "Nuevo buche". Guardar, agregar o eliminar vuelve al inventario con el aviso "Cambios en los buches guardados."; Cancelar vuelve sin cambios. El orden es automático por zona y número.
+  - Un móvil dado de baja muestra sus buches pero no deja cambiarlos. Un buche con materiales no se podrá eliminar (el back ya lo controla para cuando lleguen los materiales).
 - La baja definitiva es solo de ADMIN.
 
 Pantallas previstas:
@@ -192,4 +198,4 @@ Reglas:
 
 ## 7. Estados que tiene que tener toda pantalla
 
-Normal, cargando, vacío y error. En la lista de vehículos, además, "sin resultados de búsqueda".
+Normal, cargando, vacío y error. En la lista de vehículos, además, "sin resultados de búsqueda".
