@@ -328,6 +328,7 @@ declare module "@tanstack/history" {
     editada?: boolean;
     entregada?: string; // número de la solicitud recién entregada (US12)
     sesionVencida?: boolean; // la sesión expiró y hay que avisarlo en el login
+    volverA?: string; // a dónde volver después de iniciar sesión, si la sesión venció en otra pantalla
     movilCreado?: string; // denominación del móvil recién creado (US04)
     movilEditado?: boolean; // aviso al volver a la ficha tras editar (US48)
     listaMoviles?: BusquedaMoviles; // búsqueda de la lista, para volver desde la ficha (US06)
